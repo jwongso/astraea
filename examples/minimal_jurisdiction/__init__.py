@@ -1,1 +1,3 @@
-# TODO: Milestone 0 - port from nz-legal-rag
+from examples.minimal_jurisdiction.jurisdiction import jurisdiction
+
+__all__ = ["jurisdiction"]

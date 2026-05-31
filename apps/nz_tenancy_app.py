@@ -1,1 +1,4 @@
-# TODO: Milestone 0 - port from nz-legal-rag
+from jurisdictions.nz_tenancy import jurisdiction
+from core.api import create_app
+
+app = create_app(jurisdiction)
