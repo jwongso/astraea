@@ -1,1 +1,3 @@
-# TODO: Milestone 0 - port from nz-legal-rag
+from jurisdictions.nsw_tenancy.jurisdiction import NSWTenancyJurisdiction
+
+jurisdiction = NSWTenancyJurisdiction()
