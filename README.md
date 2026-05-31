@@ -34,9 +34,10 @@ app = create_app(jurisdiction)
 
 | Jurisdiction | Status | Corpus |
 |---|---|---|
-| NZ Tenancy (`nz_tenancy`) | Milestone 0 - in progress | 31,000+ Tenancy Tribunal decisions, live RTA 1986 |
-| NZ Legal (`nz_legal`) | Planned | All NZ courts, 2.8M+ chunks |
-| NSW Tenancy (`nsw_tenancy`) | Skeleton | - |
+| NZ Tenancy (`nz_tenancy`) | Live - tenancy.localrun.ai | 31,000+ Tenancy Tribunal decisions, live RTA 1986 |
+| NZ Employment (`nz_employment`) | Ready | 300+ ERA + Employment Court decisions through May 2026, live ERA 2000 |
+| NZ Legal (`nz_legal`) | Ready | All NZ courts, 3M+ chunks (NZHC, NZCA, NZSC, NZERA, NZEmpC, NZTT) |
+| NSW Tenancy (`nsw_tenancy`) | Skeleton - no corpus yet | Requires AustLII NCAT scraper |
 
 ---
 
@@ -74,11 +75,10 @@ Required fields: `document_id`, `court`, `court_name`, `title`, `date`, `url`, `
 
 ## Milestones
 
-- [x] Milestone 0 - core interface design (`JurisdictionBase`, `StatuteRoute`, schema, contract tests)
-- [ ] Milestone 0 cont. - extract `nz_tenancy` from nz-legal-rag, prove lossless
-- [ ] Milestone 1 - `nsw_tenancy` skeleton proves interface works for second jurisdiction
-- [ ] Milestone 2 - real NSW corpus, AustLII scraper
-- [ ] Milestone 3 - open source, CONTRIBUTING.md, Docker Compose template
+- [x] Milestone 0 - core interface design, runtime modules, `nz_tenancy` jurisdiction
+- [x] Milestone 1 - `nsw_tenancy` skeleton + `nz_legal` + `nz_employment` prove interface generalises
+- [ ] Milestone 2 - real NSW corpus (AustLII NCAT scraper), smoke test runner wired to pytest
+- [ ] Milestone 3 - open source polish: CONTRIBUTING.md, Docker Compose, pyproject packaging
 
 ---
 
