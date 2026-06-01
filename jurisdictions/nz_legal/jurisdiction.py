@@ -7,7 +7,7 @@ NZTT-only filtering, and is oriented toward legal professionals and
 researchers rather than tenants.
 """
 
-from core.jurisdiction import CorpusConfig, JurisdictionBase, WebVerifyConfig
+from core.jurisdiction import CorpusConfig, JurisdictionBase, SmokeFixture, WebVerifyConfig
 from core.routing import StatuteRoute
 
 _SYSTEM_PROMPT = """You are a legal research assistant specialising in New Zealand law.
@@ -73,6 +73,26 @@ class NZLegalJurisdiction(JurisdictionBase):
     @property
     def max_question_chars(self) -> int:
         return 1200
+
+    @property
+    def smoke_fixtures(self) -> list[SmokeFixture]:
+        return [
+            SmokeFixture(
+                question="What is the test for unjustified dismissal under the Employment Relations Act?",
+                expected_sections=[],
+                description="employment query - should hit NZERA/NZEmpC decisions",
+            ),
+            SmokeFixture(
+                question="What are the grounds for judicial review of a government decision?",
+                expected_sections=[],
+                description="public law query - should hit NZHC/NZCA decisions",
+            ),
+            SmokeFixture(
+                question="Can a landlord evict a tenant without giving a reason?",
+                expected_sections=[],
+                description="tenancy query - should hit NZTT decisions from the full corpus",
+            ),
+        ]
 
     def get_scraper(self):
         raise NotImplementedError(
