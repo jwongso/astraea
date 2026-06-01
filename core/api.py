@@ -164,6 +164,10 @@ async def _retrieve_anchor(
             allow_set = set(dominant_allow)
             raw = [h for h in raw if not _is_leg_chunk(h.case_id) or h.case_id in allow_set]
 
+        # Keep only legislation chunks - prevent case decisions from the same
+        # collection leaking into leg_sources (e.g. nz_legal has both).
+        raw = [h for h in raw if _is_leg_chunk(h.case_id)]
+
         seen: set[str] = set()
         hits = []
         max_hits = max(3, len(injected_ids)) if injected_ids else 2
@@ -346,15 +350,28 @@ class FeedbackFullRequest(BaseModel):
     verification: list | None = None
 
 
-def create_app(jurisdiction: JurisdictionBase) -> FastAPI:
-    """Return a fully configured FastAPI app for this jurisdiction."""
+def create_app(
+    jurisdiction: JurisdictionBase,
+    pipeline_factory: type | None = None,
+    static_dir: "Path | str | None" = None,
+) -> FastAPI:
+    """Return a fully configured FastAPI app for this jurisdiction.
 
-    _static_dir = Path(__file__).parent.parent / "jurisdictions" / jurisdiction.name.replace("-", "_") / "static"
+    pipeline_factory: optional RAGPipeline subclass to instantiate instead of the default.
+                      Must accept (collection, system_prompt, courts) keyword args.
+    static_dir:       explicit path to a static files directory. Falls back to
+                      jurisdictions/<name>/static/ inside the astraea package tree.
+    """
+    _default_static = (
+        Path(__file__).parent.parent / "jurisdictions" / jurisdiction.name.replace("-", "_") / "static"
+    )
+    _static_dir = Path(static_dir) if static_dir is not None else _default_static
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         corpus = jurisdiction.corpus
-        pipeline = RAGPipeline(
+        factory = pipeline_factory or RAGPipeline
+        pipeline = factory(
             collection=corpus.qdrant_collection,
             system_prompt=jurisdiction.system_prompt,
             courts=corpus.courts or None,

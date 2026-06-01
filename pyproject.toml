@@ -20,9 +20,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-[project.urls]
-Homepage = "https://github.com/jwongso/astraea"
-Issues = "https://github.com/jwongso/astraea/issues"
 dependencies = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
@@ -33,6 +30,10 @@ dependencies = [
     "redis>=5.0",
     "cachetools>=5.3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jwongso/astraea"
+Issues = "https://github.com/jwongso/astraea/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -46,6 +47,9 @@ ingest = [
     "pytesseract>=0.3",
     "pillow>=10.0",
 ]
+
+[tool.setuptools.packages.find]
+include = ["core*", "jurisdictions*", "ingest*", "examples*"]
 
 [tool.ruff]
 line-length = 100
