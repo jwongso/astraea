@@ -1,4 +1,4 @@
-"""Unit tests for refine-retrieve helpers in core/api.py.
+"""Unit tests for refine-retrieve and session helpers in core/api.py.
 
 These tests are stateless (no Qdrant, no LLM) and always run.
 They verify the confidence classification thresholds and the
@@ -7,7 +7,7 @@ query deduplication logic used by _refine_retrieve.
 
 import pytest
 
-from core.api import _confidence, _dedupe_queries
+from core.api import _confidence, _dedupe_queries, _format_session_context, _SESSION_ID_RE
 
 
 # ---------------------------------------------------------------------------
@@ -91,3 +91,64 @@ class TestDedupeQueries:
     def test_original_is_first(self):
         result = _dedupe_queries("original question here", "rewritten version")
         assert result[0] == "original question here"
+
+
+# ---------------------------------------------------------------------------
+# Session helpers
+# ---------------------------------------------------------------------------
+
+class TestSessionIdValidation:
+
+    def test_valid_uuid4_accepted(self):
+        import uuid
+        uid = str(uuid.uuid4())
+        assert _SESSION_ID_RE.match(uid)
+
+    def test_non_hex_rejected(self):
+        assert not _SESSION_ID_RE.match("test-session-12345")
+
+    def test_too_short_rejected(self):
+        assert not _SESSION_ID_RE.match("abc123")
+
+    def test_empty_rejected(self):
+        assert not _SESSION_ID_RE.match("")
+
+    def test_uppercase_rejected(self):
+        # crypto.randomUUID() always produces lowercase; uppercase would be anomalous
+        assert not _SESSION_ID_RE.match("550E8400-E29B-41D4-A716-446655440000")
+
+
+class TestFormatSessionContext:
+
+    def test_empty_turns_returns_empty(self):
+        assert _format_session_context([]) == ""
+
+    def test_single_turn_formatted(self):
+        turns = [{"q": "Can my landlord enter?", "a": "No, 24 hours notice is required.", "ts": 0}]
+        result = _format_session_context(turns)
+        assert "Can my landlord enter?" in result
+        assert "24 hours notice" in result
+        assert "Recent conversation" in result
+
+    def test_answer_truncated_with_ellipsis(self):
+        long_answer = "x" * 401
+        # Simulate stored turn where answer was already capped at 400 chars
+        turns = [{"q": "q", "a": long_answer[:400], "ts": 0}]
+        result = _format_session_context(turns)
+        assert result.endswith("...")
+
+    def test_short_answer_no_ellipsis(self):
+        turns = [{"q": "q", "a": "Short answer.", "ts": 0}]
+        result = _format_session_context(turns)
+        assert not result.endswith("...")
+
+    def test_multiple_turns_all_present(self):
+        turns = [
+            {"q": "Question one", "a": "Answer one", "ts": 0},
+            {"q": "Question two", "a": "Answer two", "ts": 1},
+            {"q": "Question three", "a": "Answer three", "ts": 2},
+        ]
+        result = _format_session_context(turns)
+        for t in turns:
+            assert t["q"] in result
+            assert t["a"] in result
