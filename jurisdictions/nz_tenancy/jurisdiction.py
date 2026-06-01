@@ -95,6 +95,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s28"],
                 description="rent_payment route",
             ),
+            SmokeFixture(
+                question="My landlord did not fix a leaking ceiling for 5 months. What compensation can I apply for?",
+                expected_sections=["NZLEG/RTA/s45"],
+                description="repairs_maintenance route - ceiling leak compensation",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
