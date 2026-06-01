@@ -30,18 +30,16 @@ class Generator:
         truncated = [c[:1500] for c in context_chunks]
         context_block = "\n\n---\n\n".join(f"[S{i + 1}] {chunk}" for i, chunk in enumerate(truncated))
         source_header = "\n".join(
-            f"  [S{i + 1}] {s.get('title', 'Unknown')} | {s.get('court_name', '')} | "
-            f"{s.get('date', '')} | {s.get('url', '')}"
+            f"  [S{i + 1}] {s.get('title') or s.get('case_id', 'Unknown')} | "
+            f"{s.get('court_name', '')} | {s.get('date', '')} | {s.get('url', '')}"
             for i, s in enumerate(sources)
         )
         anchor_block = f"{legislation_anchor}\n\n---\n\n" if legislation_anchor else ""
         user_message = (
             f"{anchor_block}"
             f"Source index:\n{source_header}\n\n"
-            f"Context documents (numbered to match source index):\n\n{context_block}\n\n"
-            f"---\n\nQuestion: {question}\n\n"
-            f"Answer using only the context above. Cite sources with [SN] notation "
-            f"(e.g. [S1], [S2]) matching the source index. Do not invent other citation formats."
+            f"Context documents:\n\n{context_block}\n\n"
+            f"---\n\nQuestion: {question}"
         )
         payload = {
             "model": _LLM_MODEL,

@@ -56,7 +56,9 @@ _WEB_CACHE_PREFIX = "astraea:web_verify:"
 _VALID_STRATEGIES = {"vector", "mmr"}
 
 _REWRITE_SYSTEM_DEFAULT = (
-    "Rewrite the following as a concise formal legal question. "
+    "Rewrite the following as a concise formal legal question optimised for retrieving relevant case decisions. "
+    "Focus on the underlying legal dispute, facts, and claims (e.g. what damage is alleged, what the landlord or tenant is claiming, what the legal issue is). "
+    "If the question includes procedural sub-questions about the tribunal process (wait times, hearing format, evidence deadlines), ignore those entirely - they are not useful for case retrieval. "
     "Output only the rewritten question, no explanation, no preamble."
 )
 
@@ -339,6 +341,8 @@ class FeedbackFullRequest(BaseModel):
     comment: str = ""
     strategy: str = ""
     irac: bool = False
+    think: bool = False
+    debug_mode: bool = False
     ts_start: str = ""
     ts_end: str = ""
     user_agent: str = ""
@@ -348,6 +352,9 @@ class FeedbackFullRequest(BaseModel):
     confidence: dict | None = None
     web_results: dict | None = None
     verification: list | None = None
+    debug: dict | None = None
+    debug_timing: dict | None = None
+    context_debug: dict | None = None
 
 
 def create_app(
@@ -457,6 +464,14 @@ def create_app(
     async def token() -> dict:
         return {"token": _PUBLIC_TOKEN}
 
+    @app.get("/debug/ping", include_in_schema=False)
+    async def debug_ping(request: Request) -> dict:
+        _check_token(request)
+        key = request.headers.get("X-Debug-Key", "")
+        if not _DEBUG_KEY or key != _DEBUG_KEY:
+            raise HTTPException(status_code=403, detail="Invalid debug key.")
+        return {"ok": True}
+
     @app.post("/ask/stream")
     async def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:
         _check_token(request)
@@ -533,6 +548,55 @@ def create_app(
 
                 if debug_mode:
                     yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores)})}\n\n"
+
+                    def _tok(text: str) -> int:
+                        return max(1, round(len(text) / 4))
+
+                    matched_routes = match_routes(question, retrieval_question, jur.routes)
+                    routing_ev = {
+                        "triggered": bool(matched_routes),
+                        "matched_routes": [r.intent for r in matched_routes],
+                        "trigger_terms": list({
+                            t for r in matched_routes for t in r.include_any
+                        }),
+                        "forced_sections": [
+                            s for r in matched_routes for s in r.forced_sections
+                        ],
+                    }
+                    anchor_sections = [
+                        {
+                            "document_id": s.get("case_id", ""),
+                            "title": s.get("title", ""),
+                            "tokens": 0,
+                            "preview": "",
+                            "forbidden_terms": {},
+                        }
+                        for s in leg_sources
+                    ]
+                    chunk_cards = [
+                        {
+                            "source_index": i + 1,
+                            "score": s.get("_score", 0),
+                            "passed_gate": True,
+                            "document_id": s.get("case_id", ""),
+                            "date": s.get("date", ""),
+                            "tokens": _tok(txt),
+                            "preview": txt[:300],
+                            "full_text": txt,
+                        }
+                        for i, (s, txt) in enumerate(zip(sources, context_texts))
+                    ]
+                    anchor_tok = _tok(anchor)
+                    chunk_tok = sum(_tok(txt) for txt in context_texts)
+                    budget = {
+                        "total_tokens": anchor_tok + chunk_tok,
+                        "ctx_limit": 8192,
+                        "anchor_tokens": anchor_tok,
+                        "chunk_tokens": chunk_tok,
+                        "sources_sent": len(sources),
+                        "truncated_chunks": 0,
+                    }
+                    yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != question, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
                 t_gen = time.monotonic()
                 full_answer: list[str] = []
@@ -620,6 +684,8 @@ def create_app(
             "comment": req.comment[:1000],
             "strategy": req.strategy,
             "irac": req.irac,
+            "think": req.think,
+            "debug_mode": req.debug_mode,
             "ts_start": req.ts_start,
             "ts_end": req.ts_end,
             "user_agent": req.user_agent[:300],
@@ -630,6 +696,9 @@ def create_app(
             "confidence": req.confidence,
             "web_results": req.web_results,
             "verification": req.verification,
+            "debug": req.debug,
+            "debug_timing": req.debug_timing,
+            "context_debug": req.context_debug,
         }
         write_feedback_full(request, entry)
         return {"ok": True}
