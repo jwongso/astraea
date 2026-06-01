@@ -71,6 +71,13 @@ class TestSmokeFixtures:
             f"  Question: {fixture.question}"
         )
 
+        if fixture.min_sources > 0:
+            n = len(_source_ids(result))
+            assert n >= fixture.min_sources, (
+                f"[{desc}] Expected at least {fixture.min_sources} case sources, got {n}.\n"
+                f"  Question: {fixture.question}"
+            )
+
 
 # ---------------------------------------------------------------------------
 # Tier 1: case retrieval sanity

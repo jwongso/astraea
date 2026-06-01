@@ -43,6 +43,7 @@ class SmokeFixture:
     expected_sections: list[str]    # section IDs that MUST appear in retrieval
     forbidden_sections: list[str] = field(default_factory=list)
     description: str = ""
+    min_sources: int = 0            # if > 0, assert at least this many case sources returned
 
 
 class JurisdictionBase(ABC):

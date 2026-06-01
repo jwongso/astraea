@@ -100,6 +100,12 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s45"],
                 description="repairs_maintenance route - ceiling leak compensation",
             ),
+            SmokeFixture(
+                question="My landlord put us on a flatmate agreement but they lived in another house. We are meant to be tenants. They forced us to leave with 3 weeks notice.",
+                expected_sections=[],
+                min_sources=6,
+                description="sham_flatmate_agreement route - case_synthetic_query augmentation",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
