@@ -53,6 +53,12 @@ _DEBUG_KEY = os.getenv("DEBUG_KEY", "")
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 _WEB_CACHE_TTL = 604800
 _WEB_CACHE_PREFIX = "astraea:web_verify:"
+_SESSION_PREFIX = "astraea:session"
+_SESSION_TTL = 7 * 24 * 3600   # 7-day sliding window
+_SESSION_MAX_TURNS = 10         # stored per UUID
+_SESSION_INJECT_TURNS = 3       # injected into each prompt
+_SESSION_ANSWER_CAP = 400       # chars stored per answer
+_SESSION_ID_RE = re.compile(r"^[0-9a-f\-]{32,36}$")
 _VALID_STRATEGIES = {"vector", "mmr"}
 
 _REWRITE_SYSTEM_DEFAULT = (
@@ -381,6 +387,59 @@ def _dedupe_queries(original: str, rewritten: str) -> list[str]:
     return result
 
 
+async def _load_session(
+    redis: "aioredis.Redis | None",
+    jurisdiction_name: str,
+    session_id: str,
+) -> list[dict]:
+    """Return the last _SESSION_INJECT_TURNS turns for this session, refreshing TTL."""
+    if not redis or not session_id or not _SESSION_ID_RE.match(session_id):
+        return []
+    key = f"{_SESSION_PREFIX}:{jurisdiction_name}:{session_id}"
+    try:
+        raw = await redis.get(key)
+        if not raw:
+            return []
+        await redis.expire(key, _SESSION_TTL)
+        return json.loads(raw)[-_SESSION_INJECT_TURNS:]
+    except Exception:
+        return []
+
+
+async def _save_session(
+    redis: "aioredis.Redis | None",
+    jurisdiction_name: str,
+    session_id: str,
+    question: str,
+    answer: str,
+) -> None:
+    """Append a Q&A turn and persist with a sliding 7-day TTL."""
+    if not redis or not session_id or not _SESSION_ID_RE.match(session_id):
+        return
+    key = f"{_SESSION_PREFIX}:{jurisdiction_name}:{session_id}"
+    try:
+        raw = await redis.get(key)
+        turns = json.loads(raw) if raw else []
+        turns.append({"q": question, "a": answer[:_SESSION_ANSWER_CAP], "ts": time.time()})
+        turns = turns[-_SESSION_MAX_TURNS:]
+        await redis.setex(key, _SESSION_TTL, json.dumps(turns))
+    except Exception:
+        pass
+
+
+def _format_session_context(turns: list[dict]) -> str:
+    """Format prior Q&A turns as a block prepended to the legislation anchor."""
+    if not turns:
+        return ""
+    lines = ["Recent conversation (use only if directly relevant to the current question):"]
+    for t in turns:
+        a = t["a"]
+        if len(a) >= _SESSION_ANSWER_CAP:
+            a += "..."
+        lines.append(f"\nQ: {t['q']}\nA: {a}")
+    return "\n".join(lines)
+
+
 def _confidence(scores: list[float]) -> dict:
     n = len(scores)
     if n == 0:
@@ -397,6 +456,7 @@ def _confidence(scores: list[float]) -> dict:
 
 class AskRequest(BaseModel):
     question: str
+    session_id: str = ""
     debug_key: str = ""
     strategy: str = "vector"
     irac: bool = False
@@ -581,6 +641,8 @@ def create_app(
                     yield f"data: {json.dumps({'type': 'error', 'message': detail.get('error', 'Server busy.')})}\n\n"
                     return
 
+                prior_turns = await _load_session(redis, jur.name, req.session_id)
+
                 retrieve_kwargs: dict = {"top_k": 5, "strategy": strategy, "min_score": 0.75, "min_chunks": 2}
 
                 retrieval_question = (
@@ -632,6 +694,10 @@ def create_app(
                 anchor = live_anchor or anchor_vstore
                 if web_text:
                     anchor = (anchor + "\n\n---\n\n" if anchor else "") + web_text
+
+                session_ctx = _format_session_context(prior_turns)
+                if session_ctx:
+                    anchor = session_ctx + ("\n\n---\n\n" + anchor if anchor else "")
 
                 yield f"data: {json.dumps({'type': 'sources', 'sources': public_sources, 'legislation': leg_sources})}\n\n"
                 if web_results:
@@ -702,6 +768,8 @@ def create_app(
                     yield f"data: {json.dumps({'type': 'debug_done', 'generate_ms': round((time.monotonic() - t_gen) * 1000), 'total_ms': round((time.monotonic() - t0) * 1000)})}\n\n"
 
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+                await _save_session(redis, jur.name, req.session_id, question, "".join(full_answer))
 
                 verification = await _verify_sections("".join(full_answer), leg_sources, leg_cache, jur)
                 if verification:
