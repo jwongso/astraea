@@ -118,6 +118,27 @@ ROUTES: list[StatuteRoute] = [
         notes="Landlord entry and inspection rules (s48).",
     ),
     StatuteRoute(
+        intent="sham_flatmate_agreement",
+        include_any=(
+            "flatmate agreement", "flatmate arrangement",
+            "boarder agreement", "boarder arrangement",
+            "licence agreement", "licensee",
+            "not a tenant", "not tenants", "are we tenants",
+            "meant to be tenants", "should be tenants",
+            "landlord not living", "landlord lives elsewhere",
+            "landlord doesn't live", "landlord does not live",
+            "landlord not resident", "landlord not there",
+            "s5",
+        ),
+        forced_sections=("NZLEG/RTA/s5",),
+        synthetic_query=(
+            "flatmate boarder licensee agreement landlord not resident sham tenancy "
+            "RTA applies despite flatmate agreement section 5 definition residential "
+            "tenancy landlord not living premises tenant rights wrongful agreement"
+        ),
+        notes="Sham flatmate/boarder agreements where landlord is not resident (s5).",
+    ),
+    StatuteRoute(
         intent="termination_notice",
         include_any=(
             "evict", "eviction",
