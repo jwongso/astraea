@@ -146,6 +146,18 @@ class JurisdictionBase(ABC):
         Route handlers can access pipeline and store via request.app.state.
         """
 
+    def register_mcp_tools(self, mcp, service) -> None:
+        """Optional: register jurisdiction-specific MCP tools on the server.
+
+        Called by create_mcp_server() after the 4 core tools are registered.
+        Use mcp.add_tool(fn, name=..., description=...) to add tools.
+        The service parameter provides access to pipeline helpers.
+
+        Args:
+            mcp: FastMCP server instance.
+            service: JurisdictionService with search/ask/get_source/get_legislation.
+        """
+
     @abstractmethod
     def get_scraper(self):
         """Return a scraper instance for offline corpus ingestion.
