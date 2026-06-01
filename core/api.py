@@ -703,4 +703,6 @@ def create_app(
         write_feedback_full(request, entry)
         return {"ok": True}
 
+    jurisdiction.register_routes(app)
+
     return app

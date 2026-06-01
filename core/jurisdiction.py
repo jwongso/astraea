@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 from core.routing import StatuteRoute
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 
 @dataclass
@@ -133,6 +137,13 @@ class JurisdictionBase(ABC):
         court = source.get("court_name") or source.get("court", "Unknown")
         date = source.get("date", "")
         return f"{court} - {date}" if date else court
+
+    def register_routes(self, app: "FastAPI") -> None:
+        """Optional: register jurisdiction-specific extra routes on the FastAPI app.
+
+        Called at the end of create_app() after all core routes are registered.
+        Route handlers can access pipeline and store via request.app.state.
+        """
 
     @abstractmethod
     def get_scraper(self):

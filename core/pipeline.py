@@ -96,6 +96,13 @@ class RAGPipeline:
         ]
         return context_texts, sources
 
+    @property
+    def store(self) -> VectorStore:
+        return self._store
+
+    async def embed(self, text: str) -> list[float]:
+        return await self._embedder.embed(text)
+
     async def close(self) -> None:
         await self._embedder.close()
         await self._generator.close()

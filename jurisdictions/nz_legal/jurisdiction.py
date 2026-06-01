@@ -94,6 +94,10 @@ class NZLegalJurisdiction(JurisdictionBase):
             ),
         ]
 
+    def register_routes(self, app) -> None:
+        from jurisdictions.nz_legal.routes import register
+        register(app)
+
     def get_scraper(self):
         raise NotImplementedError(
             "Use nz_tenancy.scraper or a court-specific scraper. "

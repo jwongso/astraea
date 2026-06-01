@@ -146,6 +146,43 @@ class VectorStore:
         )
         return SearchResult(results[0].payload, 1.0) if results else None
 
+    @property
+    def client(self) -> QdrantClient:
+        return self._client
+
+    @property
+    def collection_name(self) -> str:
+        return self._collection
+
+    def search_filtered(
+        self,
+        query_vector: list[float],
+        query_filter: "Filter",
+        top_k: int = _TOP_K_DEFAULT,
+    ) -> list[SearchResult]:
+        hits = self._client.query_points(
+            collection_name=self._collection,
+            query=query_vector,
+            limit=top_k,
+            query_filter=query_filter,
+            with_payload=True,
+        ).points
+        return [SearchResult(h.payload, h.score) for h in hits]
+
+    def scroll_filtered(
+        self,
+        query_filter,
+        limit: int = 200,
+    ) -> list[SearchResult]:
+        raw, _ = self._client.scroll(
+            collection_name=self._collection,
+            scroll_filter=query_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+        return [SearchResult(r.payload, 1.0) for r in raw]
+
     def search_within(
         self,
         query_vector: list[float],
