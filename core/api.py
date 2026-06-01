@@ -327,6 +327,60 @@ async def _augment_case_retrieval(
     return context_texts, sources
 
 
+async def _refine_retrieve(
+    original_question: str,
+    rewritten_question: str,
+    pipeline: "RAGPipeline",
+    existing_sources: list[dict],
+    existing_texts: list[str],
+) -> tuple[list[str], list[dict]]:
+    """Second retrieval pass when initial confidence is low.
+
+    Uses the original (non-rewritten) question with relaxed parameters so that
+    context the rewriter dropped has a chance to surface.
+    """
+    existing_ids = {s["case_id"] for s in existing_sources}
+
+    new_texts: list[str] = []
+    new_sources: list[dict] = []
+
+    for query in _dedupe_queries(original_question, rewritten_question):
+        extra_texts, extra_sources = await pipeline.retrieve(
+            query, top_k=8, strategy="vector", min_score=0.65, min_chunks=1,
+        )
+        for txt, src in zip(extra_texts, extra_sources):
+            if src["case_id"] not in existing_ids:
+                new_texts.append(txt)
+                new_sources.append(src)
+                existing_ids.add(src["case_id"])
+
+    combined_texts = existing_texts + new_texts
+    combined_sources = existing_sources + new_sources
+    # Re-sort by score, keep at most 6
+    paired = sorted(
+        zip(combined_sources, combined_texts),
+        key=lambda x: x[0].get("_score", 0.0),
+        reverse=True,
+    )
+    paired = paired[:6]
+    if not paired:
+        return existing_texts, existing_sources
+    out_sources, out_texts = zip(*paired)
+    return list(out_texts), list(out_sources)
+
+
+def _dedupe_queries(original: str, rewritten: str) -> list[str]:
+    """Return queries to try in the retry pass, deduplicating if identical."""
+    seen: set[str] = set()
+    result: list[str] = []
+    for q in (original, rewritten):
+        norm = " ".join(q.lower().split())
+        if norm not in seen:
+            seen.add(norm)
+            result.append(q)
+    return result
+
+
 def _confidence(scores: list[float]) -> dict:
     n = len(scores)
     if n == 0:
@@ -542,6 +596,14 @@ def create_app(
                 context_texts, sources = await _augment_case_retrieval(
                     question, retrieval_question, pipeline, jur, context_texts, sources,
                 )
+
+                refine_used = False
+                if _confidence([s["_score"] for s in sources])["level"] == "low":
+                    context_texts, sources = await _refine_retrieve(
+                        question, retrieval_question, pipeline, sources, context_texts,
+                    )
+                    refine_used = True
+
                 t_retrieve = time.monotonic() - t0
 
                 web_text, web_results, from_cache = "", [], False
@@ -577,7 +639,7 @@ def create_app(
                 yield f"data: {json.dumps({'type': 'confidence', **_confidence(scores)})}\n\n"
 
                 if debug_mode:
-                    yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores)})}\n\n"
+                    yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
 
                     def _tok(text: str) -> int:
                         return max(1, round(len(text) / 4))
@@ -681,6 +743,11 @@ def create_app(
         context_texts, sources = await _augment_case_retrieval(
             question, retrieval_question, pipeline, jur, context_texts, sources,
         )
+
+        if _confidence([s["_score"] for s in sources])["level"] == "low":
+            context_texts, sources = await _refine_retrieve(
+                question, retrieval_question, pipeline, sources, context_texts,
+            )
 
         live_anchor = ""
         if jur.legislation:
