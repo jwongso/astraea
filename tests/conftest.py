@@ -63,5 +63,8 @@ def app_client(jurisdiction):
     import os
     with TestClient(create_app(jurisdiction)) as client:
         token = os.getenv("PUBLIC_TOKEN", "")
-        client.headers.update({"X-API-Key": token} if token else {})
+        headers = {"X-No-Log": "1"}
+        if token:
+            headers["X-API-Key"] = token
+        client.headers.update(headers)
         yield client
