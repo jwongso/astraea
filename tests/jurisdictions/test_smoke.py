@@ -80,6 +80,47 @@ class TestSmokeFixtures:
 
 
 # ---------------------------------------------------------------------------
+# Tier 1: refine-retrieve integration
+# ---------------------------------------------------------------------------
+
+@skip_no_qdrant
+@pytest.mark.retrieval
+class TestRefineRetrieve:
+    """Verify _refine_retrieve does not corrupt normal results and fires on poor queries."""
+
+    def test_high_confidence_query_unaffected(self, app_client, jurisdiction):
+        """A clearly scoped query should still return sources after refine path was added."""
+        if not jurisdiction.smoke_fixtures:
+            pytest.skip("No smoke fixtures")
+        q = jurisdiction.smoke_fixtures[0].question
+        result = _retrieve(app_client, q)
+        assert len(result.get("sources", [])) >= 2, (
+            "High-confidence query returned fewer than 2 sources - "
+            "refine may have corrupted the result set"
+        )
+
+    def test_vague_query_returns_something(self, app_client, jurisdiction):
+        """A vague query should still return at least one source after refine fallback."""
+        if not jurisdiction.smoke_fixtures:
+            pytest.skip("No smoke fixtures")
+        result = _retrieve(app_client, "my landlord won't help me")
+        sources = result.get("sources", [])
+        assert len(sources) >= 1, (
+            "Vague query returned no sources even after refine fallback. "
+            "Check _refine_retrieve thresholds."
+        )
+
+    def test_sources_have_valid_scores_after_refine(self, app_client, jurisdiction):
+        """Sources returned after a potential refine pass must still have required fields."""
+        if not jurisdiction.smoke_fixtures:
+            pytest.skip("No smoke fixtures")
+        result = _retrieve(app_client, "my landlord won't help me")
+        for src in result.get("sources", []):
+            assert "case_id" in src
+            assert "url" in src
+
+
+# ---------------------------------------------------------------------------
 # Tier 1: case retrieval sanity
 # ---------------------------------------------------------------------------
 

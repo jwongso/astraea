@@ -101,6 +101,21 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 description="repairs_maintenance route - ceiling leak compensation",
             ),
             SmokeFixture(
+                question="My landlord never gave me a copy of the tenancy agreement after I signed it. Are they required to?",
+                expected_sections=["NZLEG/RTA/s13A", "NZLEG/RTA/s13B"],
+                description="agreement_form route - landlord must provide copy of signed agreement",
+            ),
+            SmokeFixture(
+                question="My landlord asked me to pay 6 weeks rent as a bond. I thought there was a maximum. They also haven't lodged the bond yet.",
+                expected_sections=["NZLEG/RTA/s18"],
+                description="bond route - maximum bond amount and lodgement obligation",
+            ),
+            SmokeFixture(
+                question="My landlord gave me a 90 day eviction notice but I am on a periodic tenancy and have done nothing wrong. Is this legal?",
+                expected_sections=["NZLEG/RTA/s51"],
+                description="termination_notice route - 90 day no-cause notice on periodic tenancy",
+            ),
+            SmokeFixture(
                 question="My landlord put us on a flatmate agreement but they lived in another house. We are meant to be tenants. They forced us to leave with 3 weeks notice.",
                 expected_sections=[],
                 min_sources=6,
