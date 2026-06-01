@@ -28,11 +28,11 @@ Two new example buttons added to the NZ tenancy frontend:
 
 No new endpoints needed - works through the existing /ask/stream.
 
-### Q4 - Answer tone (TODO)
-The model still opens with hedging ("The process can be stressful...") instead of
-directly addressing the user's situation and strength of their case.
-Add system prompt guidance: open with a direct assessment of the user's legal
-position, not a preamble.
+### Q4 - Answer tone (DONE)
+Added system prompt rule: open with a direct one-sentence verdict naming the
+user's legal position and the single strongest fact driving it. Explicitly
+forbids preambles about process, stress, or "what I will cover."
+Benchmark: Bruce's "your situation is actually very straightforward."
 
 ---
 
