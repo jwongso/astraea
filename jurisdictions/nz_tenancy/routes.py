@@ -15,6 +15,8 @@ ROUTES: list[StatuteRoute] = [
             "tenant damage", "damage claim", "repair cost",
             "landlord charge", "liable for damage", "damage to the",
             "worn", "deteriorated", "deterioration",
+            "carpet damage", "carpet replacement", "carpet clean",
+            "bond deduction", "deducting from", "deduct from bond",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),

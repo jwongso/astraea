@@ -106,6 +106,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 min_sources=6,
                 description="sham_flatmate_agreement route - case_synthetic_query augmentation",
             ),
+            SmokeFixture(
+                question="My landlord is withholding my $2,000 bond claiming carpet damage. I paid $160 for a professional clean and the carpet was already 8 years old when I moved in. What are my rights and draft a letter disputing this?",
+                expected_sections=["NZLEG/RTA/s49A", "NZLEG/RTA/s49B"],
+                description="draft_letter route - combined analysis+draft, wear_and_tear sections in context",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
