@@ -141,8 +141,9 @@ ROUTES: list[StatuteRoute] = [
         intent="rent_payment",
         include_any=(
             "rent increase", "increase the rent", "raise the rent", "raised the rent",
+            "increase my rent", "increase rent", "increasing rent", "increasing my rent",
             "rent rise", "rent review", "maximum rent", "rent in advance",
-            "weeks rent in advance", "how much rent",
+            "weeks rent in advance", "how much rent", "notice to increase",
             "s28", "s28a",
         ),
         forced_sections=("NZLEG/RTA/s28", "NZLEG/RTA/s28A"),

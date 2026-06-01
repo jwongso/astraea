@@ -6,7 +6,23 @@ build-backend = "setuptools.build_meta"
 name = "astraea"
 version = "0.1.0"
 description = "Open-justice RAG framework - jurisdiction-specific legal Q&A over public court decisions"
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
+authors = [{ email = "jsaputra@riseup.net" }]
+keywords = ["legal", "rag", "llm", "tenancy", "jurisdiction"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/jwongso/astraea"
+Issues = "https://github.com/jwongso/astraea/issues"
 dependencies = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
@@ -37,6 +53,7 @@ target-version = "py311"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+pythonpath = ["."]
 markers = [
     "retrieval: Tier 1 - Qdrant only, no LLM required",
     "structural: Tier 2 - LLM required, non-semantic checks",

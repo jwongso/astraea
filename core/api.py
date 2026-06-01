@@ -128,7 +128,15 @@ async def _retrieve_anchor(
         seen_inject: set[str] = set()
         for route in matched:
             synth_vector = await pipeline._embedder.embed(route.synthetic_query)
-            synth_raw = leg_store.search(synth_vector, top_k=8)
+            leg_courts = list({
+                sid.split("/")[0] for sid in route.forced_sections
+                if "/" in sid and "LEG" in sid.split("/")[0].upper()
+            })
+            synth_raw = leg_store.search(
+                synth_vector,
+                top_k=len(route.forced_sections) + 10,
+                courts=leg_courts or None,
+            )
             existing_ids = {h.case_id for h in raw}
             for h in synth_raw:
                 if h.case_id in route.forced_sections and h.case_id not in seen_inject:
@@ -137,6 +145,14 @@ async def _retrieve_anchor(
                     injections.append(h)
                     seen_inject.add(h.case_id)
                     injected_ids.append(h.case_id)
+            for sid in route.forced_sections:
+                if sid not in seen_inject:
+                    h = leg_store.fetch_by_case_id(sid)
+                    if h:
+                        raw = [x for x in raw if x.case_id != h.case_id]
+                        injections.append(h)
+                        seen_inject.add(sid)
+                        injected_ids.append(sid)
         raw = injections + raw
 
         combined_q = normalize_query((original_question or question) + " " + question)
@@ -150,7 +166,7 @@ async def _retrieve_anchor(
 
         seen: set[str] = set()
         hits = []
-        max_hits = 3 if injected_ids else 2
+        max_hits = max(3, len(injected_ids)) if injected_ids else 2
         for h in raw:
             if h.case_id not in seen:
                 seen.add(h.case_id)
@@ -293,6 +309,43 @@ def _confidence(scores: list[float]) -> dict:
     return {"level": level, "chunks": n, "message": messages[level]}
 
 
+class AskRequest(BaseModel):
+    question: str
+    debug_key: str = ""
+    strategy: str = "vector"
+    irac: bool = False
+    verify: bool = True
+    alwaysonline: bool = False
+
+
+class RetrieveRequest(BaseModel):
+    question: str
+    strategy: str = "vector"
+
+
+class FeedbackRequest(BaseModel):
+    question: str
+    rating: int
+    comment: str = ""
+
+
+class FeedbackFullRequest(BaseModel):
+    question: str
+    rating: int
+    comment: str = ""
+    strategy: str = ""
+    irac: bool = False
+    ts_start: str = ""
+    ts_end: str = ""
+    user_agent: str = ""
+    answer: str = ""
+    sources: list = []
+    legislation: list = []
+    confidence: dict | None = None
+    web_results: dict | None = None
+    verification: list | None = None
+
+
 def create_app(jurisdiction: JurisdictionBase) -> FastAPI:
     """Return a fully configured FastAPI app for this jurisdiction."""
 
@@ -386,39 +439,6 @@ def create_app(jurisdiction: JurisdictionBase) -> FastAPI:
     @app.get("/token")
     async def token() -> dict:
         return {"token": _PUBLIC_TOKEN}
-
-    class AskRequest(BaseModel):
-        question: str
-        debug_key: str = ""
-        strategy: str = "vector"
-        irac: bool = False
-        verify: bool = True
-        alwaysonline: bool = False
-
-    class RetrieveRequest(BaseModel):
-        question: str
-        strategy: str = "vector"
-
-    class FeedbackRequest(BaseModel):
-        question: str
-        rating: int
-        comment: str = ""
-
-    class FeedbackFullRequest(BaseModel):
-        question: str
-        rating: int
-        comment: str = ""
-        strategy: str = ""
-        irac: bool = False
-        ts_start: str = ""
-        ts_end: str = ""
-        user_agent: str = ""
-        answer: str = ""
-        sources: list = []
-        legislation: list = []
-        confidence: dict | None = None
-        web_results: dict | None = None
-        verification: list | None = None
 
     @app.post("/ask/stream")
     async def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:

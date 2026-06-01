@@ -1,14 +1,37 @@
 __pycache__/
-*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.venv/
+venv/
 *.egg-info/
 dist/
 build/
-.venv/
-venv/
-*.env
-.env.*
-data/
-*.log
-*.jsonl
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+
+# Runtime data
+data/
+logs/
+feedback/
+*.log
+*.jsonl
+
+# Models (large files, download separately)
+*.gguf
+*.bin
+*.safetensors
+models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

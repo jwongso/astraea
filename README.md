@@ -37,18 +37,21 @@ app = create_app(jurisdiction)
 | NZ Tenancy (`nz_tenancy`) | Live - tenancy.localrun.ai | 31,000+ Tenancy Tribunal decisions, live RTA 1986 |
 | NZ Employment (`nz_employment`) | Ready | 300+ ERA + Employment Court decisions through May 2026, live ERA 2000 |
 | NZ Legal (`nz_legal`) | Ready | All NZ courts, 3M+ chunks (NZHC, NZCA, NZSC, NZERA, NZEmpC, NZTT) |
-| NSW Tenancy (`nsw_tenancy`) | Skeleton - no corpus yet | Requires AustLII NCAT scraper |
+| NSW Tenancy (`nsw_tenancy`) | Ready | 225+ NCAT Consumer and Commercial Division decisions (2025-2026), live RTA 2010 |
 
 ---
 
 ## Adding a new jurisdiction
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full fork-to-running walkthrough.
+
+Quick version:
+
 1. Copy `examples/minimal_jurisdiction/` to `jurisdictions/your_name/`
 2. Implement the 4 required properties in `jurisdiction.py`
 3. Run the contract tests: `pytest tests/core/test_jurisdiction_contract.py --jurisdiction your_name`
-4. Add smoke fixtures and run: `pytest tests/jurisdictions/your_name/ -m retrieval`
-
-See `core/jurisdiction.py` for the full `JurisdictionBase` interface.
+4. Ingest your corpus into Qdrant (see `ingest/` and `schemas/qdrant_payload.schema.json`)
+5. Add smoke fixtures and run: `pytest tests/jurisdictions/test_smoke.py --jurisdiction your_name -m retrieval`
 
 ---
 
@@ -77,8 +80,8 @@ Required fields: `document_id`, `court`, `court_name`, `title`, `date`, `url`, `
 
 - [x] Milestone 0 - core interface design, runtime modules, `nz_tenancy` jurisdiction
 - [x] Milestone 1 - `nsw_tenancy` skeleton + `nz_legal` + `nz_employment` prove interface generalises
-- [ ] Milestone 2 - real NSW corpus (AustLII NCAT scraper), smoke test runner wired to pytest
-- [ ] Milestone 3 - open source polish: CONTRIBUTING.md, Docker Compose, pyproject packaging
+- [x] Milestone 2 - smoke test runner wired to pytest (Tier 1/2/3), Docker Compose
+- [x] Milestone 3 - CONTRIBUTING.md, packaging, NSW NCAT scraper + corpus (225+ decisions)
 
 ---
 

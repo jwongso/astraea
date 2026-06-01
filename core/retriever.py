@@ -135,6 +135,17 @@ class VectorStore:
         ).points
         return [SearchResult(h.payload, h.score) for h in hits]
 
+    def fetch_by_case_id(self, case_id: str) -> "SearchResult | None":
+        """Return one representative chunk for a case_id (first chunk found)."""
+        results, _ = self._client.scroll(
+            collection_name=self._collection,
+            scroll_filter=Filter(must=[FieldCondition(key="case_id", match=MatchValue(value=case_id))]),
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
+        )
+        return SearchResult(results[0].payload, 1.0) if results else None
+
     def search_within(
         self,
         query_vector: list[float],

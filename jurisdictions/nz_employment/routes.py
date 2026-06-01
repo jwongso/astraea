@@ -72,6 +72,7 @@ ROUTES: list[StatuteRoute] = [
             "compensation", "reinstate", "reinstatement", "remedy", "remedies",
             "payout", "settlement", "award", "how much", "what can I get",
             "lost wages", "lost income",
+            "job back", "get my job", "back to work", "re-employed", "rehired",
         ),
         forced_sections=("NZLEG/ERA2000/s123", "NZLEG/ERA2000/s125"),
         synthetic_query="remedies reinstatement compensation lost wages ERA 2000 personal grievance",

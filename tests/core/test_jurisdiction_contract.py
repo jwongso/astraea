@@ -91,17 +91,4 @@ def test_legislation_urls_are_strings(jurisdiction_name):
             f"Act {act_id} URL must be a full HTTP URL"
 
 
-# ---------------------------------------------------------------------------
-# Conftest hook - pass --jurisdiction via pytest
-# ---------------------------------------------------------------------------
-
-def pytest_addoption(parser):
-    parser.addoption("--jurisdiction", action="store", default=None)
-
-
-@pytest.fixture
-def jurisdiction_name(request):
-    name = request.config.getoption("--jurisdiction")
-    if not name:
-        pytest.skip("Pass --jurisdiction <name> to run contract tests")
-    return name
+# jurisdiction_name and pytest_addoption live in tests/conftest.py

@@ -104,8 +104,5 @@ class NSWTenancyJurisdiction(JurisdictionBase):
         return f"{court} - {date}" if date else court
 
     def get_scraper(self):
-        raise NotImplementedError(
-            "NSW NCAT scraper not yet implemented. "
-            "See ingest/base.py ScraperBase for the interface. "
-            "Source: https://www.austlii.edu.au/cgi-bin/viewdb/au/cases/nsw/NSWCATCD/"
-        )
+        from jurisdictions.nsw_tenancy.scraper import NSWCATScraper
+        return NSWCATScraper()
