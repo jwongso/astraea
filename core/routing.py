@@ -31,6 +31,7 @@ class StatuteRoute:
     leg_allow_list: tuple[str, ...] = ()
     priority: int = 0
     notes: str = ""
+    case_synthetic_query: str = ""  # if set, a supplementary case retrieval pass runs with this query
 
 
 def normalize_query(text: str) -> str:

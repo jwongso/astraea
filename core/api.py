@@ -508,10 +508,27 @@ def create_app(
                     else await _rewrite_query(question, rewrite_system)
                 )
 
+                matched_for_aug = match_routes(question, retrieval_question, jur.routes)
+                case_synth_queries = [
+                    r.case_synthetic_query for r in matched_for_aug if r.case_synthetic_query
+                ]
+
                 (context_texts, sources), (anchor_vstore, leg_sources) = await asyncio.gather(
                     pipeline.retrieve(retrieval_question, **retrieve_kwargs),
                     _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
                 )
+
+                if case_synth_queries:
+                    existing_ids = {s["case_id"] for s in sources}
+                    for csq in case_synth_queries:
+                        extra_texts, extra_sources = await pipeline.retrieve(
+                            csq, top_k=5, strategy="vector", min_score=0.70, min_chunks=1,
+                        )
+                        for txt, src in zip(extra_texts, extra_sources):
+                            if src["case_id"] not in existing_ids and len(sources) < 8:
+                                context_texts.append(txt)
+                                sources.append(src)
+                                existing_ids.add(src["case_id"])
                 t_retrieve = time.monotonic() - t0
 
                 web_text, web_results, from_cache = "", [], False

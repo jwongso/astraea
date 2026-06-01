@@ -136,6 +136,11 @@ ROUTES: list[StatuteRoute] = [
             "RTA applies despite flatmate agreement section 5 definition residential "
             "tenancy landlord not living premises tenant rights wrongful agreement"
         ),
+        case_synthetic_query=(
+            "flatmate agreement landlord not living property sham tenancy RTA applies "
+            "boarder licensee residential tenancy act tenant rights eviction notice "
+            "invalid agreement landlord not resident"
+        ),
         notes="Sham flatmate/boarder agreements where landlord is not resident (s5).",
     ),
     StatuteRoute(
