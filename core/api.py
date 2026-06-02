@@ -36,7 +36,10 @@ from core.jurisdiction import JurisdictionBase
 from core.legislation import LegislationCache, extract_section_refs
 from core.pipeline import RAGPipeline
 from core.queue import (
-    acquire, get_client_ip, queue_status, queue_wait_estimate, release, will_wait,
+    _AVG_QUERY_SECONDS,
+    acquire, get_client_ip, global_llm_acquire, global_llm_release,
+    global_llm_will_wait, LLM_GLOBAL_CONCURRENCY,
+    queue_status, queue_wait_estimate, release, will_wait,
 )
 from core.retriever import VectorStore
 from core.routing import (
@@ -859,13 +862,27 @@ def create_app(
                     }
                     yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
+                # Global LLM semaphore: serialize generation across all app
+                # processes when LLM_GLOBAL_CONCURRENCY > 0. Retrieval above
+                # already ran in parallel; only inference is serialized.
+                if LLM_GLOBAL_CONCURRENCY and await global_llm_will_wait(redis):
+                    yield f"data: {json.dumps({'type': 'queue', 'position': 1, 'reason': 'llm_busy', 'estimated_wait_s': _AVG_QUERY_SECONDS, 'message': 'Another query is generating - queued.'})}\n\n"
+
+                global_acquired = await global_llm_acquire(redis, timeout=90.0)
+                if not global_acquired:
+                    yield f"data: {json.dumps({'type': 'error', 'message': 'The server is too busy right now. Please try again in a moment.'})}\n\n"
+                    return
+
                 t_gen = time.monotonic()
                 full_answer: list[str] = []
-                async for tok in pipeline._generator.generate_stream(
-                    question, context_texts, sources, legislation_anchor=anchor or None
-                ):
-                    full_answer.append(tok)
-                    yield f"data: {json.dumps({'type': 'token', 'text': tok})}\n\n"
+                try:
+                    async for tok in pipeline._generator.generate_stream(
+                        question, context_texts, sources, legislation_anchor=anchor or None
+                    ):
+                        full_answer.append(tok)
+                        yield f"data: {json.dumps({'type': 'token', 'text': tok})}\n\n"
+                finally:
+                    await global_llm_release(redis)
 
                 if debug_mode:
                     yield f"data: {json.dumps({'type': 'debug_done', 'generate_ms': round((time.monotonic() - t_gen) * 1000), 'total_ms': round((time.monotonic() - t0) * 1000)})}\n\n"

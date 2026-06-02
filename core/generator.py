@@ -10,7 +10,7 @@ import httpx
 
 _LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:8080/v1")
 _LLM_MODEL = os.getenv("LLM_MODEL", "qwen3")
-_LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "1500"))
+_LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "2500"))
 _LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.2"))
 
 
