@@ -114,6 +114,15 @@ class JurisdictionBase(ABC):
         """None = no web search verification step."""
         return None
 
+    def preprocess_question(self, question: str, **context) -> str:
+        """Optional: transform the question before retrieval and generation.
+
+        Called once per request immediately after sanitization.
+        context may include 'address' (str | None) or other request-level fields.
+        Default is identity - override to inject zone info, session context, etc.
+        """
+        return question
+
     @property
     def leg_sources(self) -> list[LegislationSource]:
         """Override to enable federated per-Act legislation retrieval.
