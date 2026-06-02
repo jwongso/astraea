@@ -31,7 +31,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from core.browser import BrowserSession
-from core.feedback import write_feedback, write_feedback_full
+from core.feedback import write_feedback, write_feedback_debug, write_feedback_full
 from core.jurisdiction import JurisdictionBase
 from core.legislation import LegislationCache, extract_section_refs
 from core.pipeline import RAGPipeline
@@ -579,8 +579,9 @@ class FeedbackRequest(BaseModel):
 
 class FeedbackFullRequest(BaseModel):
     question: str
-    rating: int
+    rating: int = 0
     comment: str = ""
+    is_debug: bool = False
     strategy: str = ""
     irac: bool = False
     think: bool = False
@@ -968,7 +969,7 @@ def create_app(
     @app.post("/feedback/full")
     async def feedback_full(req: FeedbackFullRequest, request: Request) -> dict:
         _check_token(request)
-        if req.rating not in (1, -1):
+        if not req.is_debug and req.rating not in (1, -1):
             raise HTTPException(status_code=400, detail="Rating must be 1 or -1.")
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -993,7 +994,10 @@ def create_app(
             "debug_timing": req.debug_timing,
             "context_debug": req.context_debug,
         }
-        write_feedback_full(request, entry)
+        if req.is_debug:
+            write_feedback_debug(request, entry)
+        else:
+            write_feedback_full(request, entry)
         return {"ok": True}
 
     jurisdiction.register_routes(app)
