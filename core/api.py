@@ -110,6 +110,16 @@ async def _check_llm() -> None:
         )
 
 
+def _strip_context_prefixes(question: str) -> str:
+    """Remove leading [Key: value] context lines added by preprocess_question.
+
+    Zone prefixes like '[Zone context: ...]' must not reach the rewriter - they
+    bias vector retrieval toward planning/RMA sections instead of building law.
+    The full prefixed question is still sent to the LLM for generation.
+    """
+    return re.sub(r"^(\[[^\]]+\]\s*\n+)+", "", question)
+
+
 async def _rewrite_query(question: str, system_prompt: str) -> str:
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -736,9 +746,10 @@ def create_app(
 
                 retrieve_kwargs: dict = {"top_k": 5, "strategy": strategy, "min_score": 0.75, "min_chunks": 2}
 
+                rewrite_input = _strip_context_prefixes(question)
                 retrieval_question = (
-                    question if skip_rewrite
-                    else await _rewrite_query(question, rewrite_system)
+                    rewrite_input if skip_rewrite
+                    else await _rewrite_query(rewrite_input, rewrite_system)
                 )
 
                 (context_texts, sources), (anchor_vstore, leg_sources) = await asyncio.gather(
@@ -846,7 +857,7 @@ def create_app(
                         "sources_sent": len(sources),
                         "truncated_chunks": 0,
                     }
-                    yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != question, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
+                    yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
                 t_gen = time.monotonic()
                 full_answer: list[str] = []
@@ -891,9 +902,10 @@ def create_app(
         question = jur.preprocess_question(question, address=req.address)
 
         strategy = req.strategy if req.strategy in _VALID_STRATEGIES else "vector"
+        rewrite_input = _strip_context_prefixes(question)
         retrieval_question = (
-            question if skip_rewrite
-            else await _rewrite_query(question, rewrite_system)
+            rewrite_input if skip_rewrite
+            else await _rewrite_query(rewrite_input, rewrite_system)
         )
 
         (context_texts, sources), (anchor_vstore, leg_sources) = await asyncio.gather(
