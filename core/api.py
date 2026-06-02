@@ -63,6 +63,12 @@ def _get_reranker():
         from core.reranker import CrossEncoderReranker
         _reranker = CrossEncoderReranker(log_only=True)
     return _reranker
+
+
+# Cache for synthetic query embeddings.
+# Route synthetic_query strings are fixed at startup - computing them once eliminates
+# per-request embed calls that add 1-2s latency each.
+_synth_vector_cache: dict[str, list[float]] = {}
 _PUBLIC_TOKEN = os.getenv("PUBLIC_TOKEN", "")
 _DEBUG_KEY = os.getenv("DEBUG_KEY", "")
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
@@ -192,7 +198,11 @@ async def _retrieve_anchor(
         injections: list = []
         seen_inject: set[str] = set()
         for route in matched:
-            synth_vector = await pipeline._embedder.embed(route.synthetic_query)
+            # Synth-vector embeddings are cached across requests because route.synthetic_query
+            # is a fixed string that never changes after startup.
+            if route.synthetic_query not in _synth_vector_cache:
+                _synth_vector_cache[route.synthetic_query] = await pipeline._embedder.embed(route.synthetic_query)
+            synth_vector = _synth_vector_cache[route.synthetic_query]
             leg_courts = list({
                 sid.split("/")[0] for sid in route.forced_sections
                 if "/" in sid and "LEG" in sid.split("/")[0].upper()

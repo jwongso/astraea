@@ -71,12 +71,17 @@ class VectorStore:
                 collection_name=self._collection,
                 vectors_config=VectorParams(size=dim, distance=Distance.COSINE),
             )
-            for field in ("court", "year"):
+            for field in ("court", "court_name", "case_id"):
                 self._client.create_payload_index(
                     collection_name=self._collection,
                     field_name=field,
-                    field_schema="keyword" if field == "court" else "integer",
+                    field_schema="keyword",
                 )
+            self._client.create_payload_index(
+                collection_name=self._collection,
+                field_name="year",
+                field_schema="integer",
+            )
 
     def case_ids_exist(self, case_ids: list[str]) -> set[str]:
         ids = [point_id(cid, 0) for cid in case_ids]
