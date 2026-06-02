@@ -35,7 +35,7 @@ app = create_app(jurisdiction)
 
 | Jurisdiction | Status | Corpus |
 |---|---|---|
-| NZ Tenancy (`nz_tenancy`) | Live - tenancy.localrun.ai | 31,000+ Tenancy Tribunal decisions, live RTA 1986 |
+| NZ Tenancy (`nz_tenancy`) | Live - tenancy.localrun.ai | 31,000+ Tenancy Tribunal decisions, RTA 1986 + Healthy Homes Standards 2019 |
 | NZ Legal (`nz_legal`) | Live - nz-legal-rag.localrun.ai | All NZ courts, 3M+ chunks (NZHC, NZCA, NZSC, NZERA, NZEmpC, NZTT) |
 | NZ Employment (`nz_employment`) | Ready | 300+ ERA + Employment Court decisions through May 2026, live ERA 2000 |
 | NSW Tenancy (`nsw_tenancy`) | PoC (framework demo) | Proves interface generalises - not actively developed |
@@ -73,6 +73,36 @@ def register_routes(self, app: FastAPI) -> None:
 Called at the end of `create_app()`. Route handlers access pipeline and store via `request.app.state`.
 
 `nz_legal` uses this to expose `/search`, `/notable`, `/sentencing-tracker`, `/pg-tracker`, and `/contrasting-cases`.
+
+### Federated per-Act legislation retrieval (`leg_sources`)
+
+By default, legislation retrieval does one vector search across the entire legislation collection.
+As a corpus grows (more Acts), smaller Acts get crowded out by larger ones on embedding similarity alone.
+
+Override `leg_sources` to run one search per registered Act in parallel, each with its own `top_k` quota.
+The re-ranker phase (Phase 2) can then select the best sections across all sources without manual routes:
+
+```python
+from core.jurisdiction import LegislationSource
+
+@property
+def leg_sources(self) -> list[LegislationSource]:
+    return [
+        LegislationSource("RTA",    "Residential Tenancies Act 1986",                         default_top_k=6, boost_top_k=10),
+        LegislationSource("HHS2019","Residential Tenancies (Healthy Homes Standards) Regulations 2019", default_top_k=4, boost_top_k=8),
+    ]
+```
+
+When a matched route targets a specific Act (e.g. `healthy_homes` route targets `HHS2019`), that
+Act's search uses `boost_top_k` instead of `default_top_k`, giving it more candidates before ranking.
+
+Routes remain as hard floor guarantees - forced sections are always included in the candidate pool
+regardless of federated search results. This means a cross-encoder re-ranker (Phase 2) can
+reorder freely without risking that a critical section is dropped.
+
+A `CrossEncoderReranker` (Phase 1: log-only) is available in `core/reranker.py`. It scores
+candidates after federated search and logs the scores for observability without affecting ranking.
+Promote to production ranking after benchmarking shows it matches route-based quality.
 
 ### Case retrieval augmentation (`case_synthetic_query` on `StatuteRoute`)
 
@@ -138,6 +168,7 @@ Required fields: `document_id`, `court`, `court_name`, `title`, `date`, `url`, `
 - [x] Milestone 2 - smoke test runner wired to pytest (Tier 1/2/3), Docker Compose
 - [x] Milestone 3 - CONTRIBUTING.md, packaging, NSW NCAT scraper + corpus (225+ decisions)
 - [x] Milestone 4 - `nz_legal` migration: tracker endpoints, contrasting cases, `register_routes` hook
+- [x] Milestone 5 - federated per-Act legislation retrieval, Healthy Homes Standards 2019 corpus, cross-encoder reranker (Phase 1 log-only), Qdrant payload indexes for fast filtered search
 
 ---
 

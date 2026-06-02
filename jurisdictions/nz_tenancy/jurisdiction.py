@@ -144,6 +144,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s49A", "NZLEG/RTA/s49B"],
                 description="draft_letter route - combined analysis+draft, wear_and_tear sections in context",
             ),
+            SmokeFixture(
+                question="My rental has no ceiling insulation and the heating does not meet the healthy homes standards. What is my landlord required to provide?",
+                expected_sections=["NZLEG/RTA/s138B", "NZLEG/HHS2019/s8", "NZLEG/HHS2019/s14"],
+                description="healthy_homes route - HHS2019 heating and insulation requirements surface alongside RTA s138B",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
