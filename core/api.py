@@ -549,11 +549,14 @@ class AskRequest(BaseModel):
     irac: bool = False
     verify: bool = True
     alwaysonline: bool = False
+    address: str | None = None  # optional: geocoded to inject zone context via preprocess_question
+    feedback_context: bool = False  # always emit context_debug for feedback capture (no debug_key required)
 
 
 class RetrieveRequest(BaseModel):
     question: str
     strategy: str = "vector"
+    address: str | None = None
 
 
 class FeedbackRequest(BaseModel):
@@ -711,6 +714,7 @@ def create_app(
         redis = request.app.state.redis
         leg_cache: LegislationCache = request.app.state.leg_cache
         jur: JurisdictionBase = request.app.state.jurisdiction
+        question = jur.preprocess_question(question, address=req.address)
 
         debug_mode = bool(_DEBUG_KEY and req.debug_key == _DEBUG_KEY)
         strategy = req.strategy if debug_mode and req.strategy in _VALID_STRATEGIES else "vector"
@@ -794,6 +798,7 @@ def create_app(
                 if debug_mode:
                     yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
 
+                if debug_mode or req.feedback_context:
                     def _tok(text: str) -> int:
                         return max(1, round(len(text) / 4))
 
@@ -883,6 +888,7 @@ def create_app(
         leg_store: VectorStore | None = request.app.state.leg_store
         leg_cache: LegislationCache = request.app.state.leg_cache
         jur: JurisdictionBase = request.app.state.jurisdiction
+        question = jur.preprocess_question(question, address=req.address)
 
         strategy = req.strategy if req.strategy in _VALID_STRATEGIES else "vector"
         retrieval_question = (
