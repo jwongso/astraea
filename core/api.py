@@ -826,7 +826,10 @@ def create_app(
                     live_anchor = leg_cache.build_anchor(first_act_id, live_text, leg_sources, jur)
 
         anchor = live_anchor or anchor_vstore
-        public_sources = [{k: v for k, v in s.items() if k not in ("title", "_score")} for s in sources]
+        public_sources = [
+            {**{k: v for k, v in s.items() if k != "title"}, "_score": s.get("_score")}
+            for s in sources
+        ]
 
         return {
             "context_texts": context_texts,
