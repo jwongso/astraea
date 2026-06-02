@@ -48,6 +48,21 @@ from core.security import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 _LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:8080/v1")
 _LLM_MODEL = os.getenv("LLM_MODEL", "qwen3")
 _REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+_ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
+
+# Module-level cross-encoder reranker (log-only in Phase 1).
+# Loaded lazily at first scored query; None when ENABLE_RERANKER=false.
+_reranker = None
+
+
+def _get_reranker():
+    global _reranker
+    if not _ENABLE_RERANKER:
+        return None
+    if _reranker is None:
+        from core.reranker import CrossEncoderReranker
+        _reranker = CrossEncoderReranker(log_only=True)
+    return _reranker
 _PUBLIC_TOKEN = os.getenv("PUBLIC_TOKEN", "")
 _DEBUG_KEY = os.getenv("DEBUG_KEY", "")
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
@@ -112,6 +127,28 @@ async def _rewrite_query(question: str, system_prompt: str) -> str:
         return question
 
 
+async def _federated_leg_search(
+    vector: list[float],
+    leg_store: VectorStore,
+    leg_sources: list,
+    boosted_act_ids: set[str],
+) -> list:
+    """Run one Qdrant search per registered Act in parallel.
+
+    Each Act gets its own top_k quota so smaller Acts are not crowded out
+    by larger ones in a single global search.
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+    async def _search_one(src):
+        top_k = src.boost_top_k if src.act_id in boosted_act_ids else src.default_top_k
+        filt = Filter(must=[FieldCondition(key="court_name", match=MatchValue(value=src.court_name))])
+        return await asyncio.to_thread(leg_store.search_filtered, vector, filt, top_k)
+
+    batches = await asyncio.gather(*[_search_one(s) for s in leg_sources])
+    return [r for batch in batches for r in batch]
+
+
 async def _retrieve_anchor(
     question: str,
     original_question: str,
@@ -119,18 +156,38 @@ async def _retrieve_anchor(
     leg_store: VectorStore,
     jurisdiction: JurisdictionBase,
 ) -> tuple[str, list[dict]]:
-    """Embed forced statute sections and inject them ahead of vector results.
+    """Retrieve legislation sections as anchor context.
+
+    Uses federated per-Act search when the jurisdiction registers leg_sources,
+    otherwise falls back to a single global legislation search. Route-forced
+    sections are always included as hard floor guarantees regardless of scores.
 
     Returns (anchor_text_from_vstore, leg_sources).
-    leg_sources is used by the caller to build a live-text anchor if available.
     """
     if leg_store is None:
         return "", []
     try:
-        vector = await pipeline._embedder.embed(question)
-        raw = leg_store.search(vector, top_k=12)
-
+        # Match routes before embedding - keyword matching, no network call
         matched = match_routes(original_question or question, question, jurisdiction.routes)
+
+        vector = await pipeline._embedder.embed(question)
+
+        # Federated search: one search per registered Act with per-source top_k quotas.
+        # Falls back to single global search for jurisdictions without leg_sources.
+        leg_srcs = jurisdiction.leg_sources
+        if leg_srcs:
+            boosted_act_ids: set[str] = set()
+            for route in matched:
+                for sid in route.forced_sections:
+                    parts = sid.split("/")
+                    if len(parts) >= 2:
+                        boosted_act_ids.add(parts[1])
+            raw = await _federated_leg_search(vector, leg_store, leg_srcs, boosted_act_ids)
+        else:
+            raw = leg_store.search(vector, top_k=12)
+
+        # Route injection - floor guarantee: forced sections always reach the candidate pool.
+        # The re-ranker (future Phase 2) may reorder within the pool but cannot drop these.
         injected_ids: list[str] = []
         injections: list = []
         seen_inject: set[str] = set()
@@ -188,6 +245,26 @@ async def _retrieve_anchor(
 
         if not hits:
             return "", []
+
+        # Phase 1 - log cross-encoder scores for observability without affecting ranking.
+        # Compare these logs against route-based order to decide if/when to promote CE to ranking.
+        reranker = _get_reranker()
+        ce_log: list[dict] = []
+        if reranker is not None:
+            try:
+                scored = await asyncio.to_thread(reranker.score, question, hits)
+                ce_log = [
+                    {"case_id": h.case_id, "ce_score": round(float(s), 4), "route_rank": i}
+                    for i, (h, s) in enumerate(scored)
+                ]
+                if ce_log:
+                    logging.getLogger(__name__).debug(
+                        "reranker_log federated=%s %s",
+                        bool(leg_srcs),
+                        ce_log,
+                    )
+            except Exception as exc:
+                logging.getLogger(__name__).warning("reranker score failed: %s", exc)
 
         lines = [
             "Relevant Act sections "

@@ -37,6 +37,20 @@ class WebVerifyConfig:
 
 
 @dataclass
+class LegislationSource:
+    """A single registered Act for federated per-source legislation retrieval.
+
+    When a jurisdiction returns a non-empty list from leg_sources, _retrieve_anchor
+    runs one Qdrant search per source (in parallel) instead of a single global search.
+    Each source gets its own top_k quota so smaller Acts are not crowded out by larger ones.
+    """
+    act_id: str             # short key, e.g. "RTA", "HHS2019" - matches NZLEG/<act_id>/ in case_id
+    court_name: str         # exact value of the court_name payload field in Qdrant
+    default_top_k: int = 4  # candidates per search when this Act is not route-boosted
+    boost_top_k: int = 8    # candidates per search when a matched route targets this Act
+
+
+@dataclass
 class SmokeFixture:
     """A single smoke test case for Tier 1 retrieval testing."""
     question: str
@@ -99,6 +113,16 @@ class JurisdictionBase(ABC):
     def web_verify(self) -> WebVerifyConfig | None:
         """None = no web search verification step."""
         return None
+
+    @property
+    def leg_sources(self) -> list[LegislationSource]:
+        """Override to enable federated per-Act legislation retrieval.
+
+        When non-empty, _retrieve_anchor runs one Qdrant search per source in
+        parallel, giving each Act a guaranteed candidate quota before re-ranking.
+        When empty (default), falls back to a single global legislation search.
+        """
+        return []
 
     @property
     def low_priority_sections(self) -> dict[str, tuple[str, ...]]:

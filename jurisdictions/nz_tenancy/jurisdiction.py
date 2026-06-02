@@ -8,6 +8,7 @@ from core.jurisdiction import (
     CorpusConfig,
     JurisdictionBase,
     LegislationConfig,
+    LegislationSource,
     SmokeFixture,
     WebVerifyConfig,
 )
@@ -42,6 +43,23 @@ class NZTenancyJurisdiction(JurisdictionBase):
     @property
     def routes(self) -> list[StatuteRoute]:
         return ROUTES
+
+    @property
+    def leg_sources(self) -> list[LegislationSource]:
+        return [
+            LegislationSource(
+                act_id="RTA",
+                court_name="Residential Tenancies Act 1986",
+                default_top_k=6,
+                boost_top_k=10,
+            ),
+            LegislationSource(
+                act_id="HHS2019",
+                court_name="Residential Tenancies (Healthy Homes Standards) Regulations 2019",
+                default_top_k=4,
+                boost_top_k=8,
+            ),
+        ]
 
     @property
     def low_priority_sections(self) -> dict[str, tuple[str, ...]]:
