@@ -540,18 +540,17 @@ def _format_session_context(turns: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def _confidence(scores: list[float]) -> dict:
+def _confidence(scores: list[float], cfg=None) -> dict:
+    from core.jurisdiction import ConfidenceConfig
+    if cfg is None:
+        cfg = ConfidenceConfig()
     n = len(scores)
     if n == 0:
-        return {"level": "low", "chunks": 0, "message": "No relevant decisions found."}
+        return {"level": "low", "chunks": 0, "message": cfg.messages.get("none", "No relevant sources found.")}
     top = max(scores)
-    level = "high" if top >= 0.82 and n >= 4 else "medium" if top >= 0.77 and n >= 2 else "low"
-    messages = {
-        "high": f"Found {n} directly relevant decisions.",
-        "medium": f"Found {n} relevant decisions - review the cited sources carefully.",
-        "low": f"Found only {n} loosely related decisions - verify independently before acting.",
-    }
-    return {"level": level, "chunks": n, "message": messages[level]}
+    level = "high" if top >= cfg.high_score and n >= cfg.high_n else "medium" if top >= cfg.medium_score and n >= cfg.medium_n else "low"
+    msg = cfg.messages.get(level, "").format(n=n)
+    return {"level": level, "chunks": n, "message": msg}
 
 
 class AskRequest(BaseModel):
@@ -765,7 +764,7 @@ def create_app(
                 )
 
                 refine_used = False
-                if _confidence([s["_score"] for s in sources])["level"] == "low":
+                if _confidence([s["_score"] for s in sources], jur.confidence_config)["level"] == "low":
                     context_texts, sources = await _refine_retrieve(
                         question, retrieval_question, pipeline, sources, context_texts,
                     )
@@ -807,7 +806,7 @@ def create_app(
                 yield f"data: {json.dumps({'type': 'sources', 'sources': public_sources, 'legislation': leg_sources})}\n\n"
                 if web_results:
                     yield f"data: {json.dumps({'type': 'web_results', 'results': web_results, 'cached': from_cache})}\n\n"
-                yield f"data: {json.dumps({'type': 'confidence', **_confidence(scores)})}\n\n"
+                yield f"data: {json.dumps({'type': 'confidence', **_confidence(scores, jur.confidence_config)})}\n\n"
 
                 if debug_mode:
                     yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
@@ -934,7 +933,7 @@ def create_app(
             question, retrieval_question, pipeline, jur, context_texts, sources,
         )
 
-        if _confidence([s["_score"] for s in sources])["level"] == "low":
+        if _confidence([s["_score"] for s in sources], jur.confidence_config)["level"] == "low":
             context_texts, sources = await _refine_retrieve(
                 question, retrieval_question, pipeline, sources, context_texts,
             )

@@ -51,6 +51,25 @@ class LegislationSource:
 
 
 @dataclass
+class ConfidenceConfig:
+    """Confidence level thresholds and messages for a jurisdiction.
+
+    Legislation-based jurisdictions should use lower thresholds and replace
+    'decisions' language with 'sources' or 'legislation sections'.
+    """
+    high_score: float = 0.82
+    high_n: int = 4
+    medium_score: float = 0.77
+    medium_n: int = 2
+    messages: dict[str, str] = field(default_factory=lambda: {
+        "high": "Found {n} directly relevant decisions.",
+        "medium": "Found {n} relevant decisions - review the cited sources carefully.",
+        "low": "Found only {n} loosely related decisions - verify independently before acting.",
+        "none": "No relevant decisions found.",
+    })
+
+
+@dataclass
 class SmokeFixture:
     """A single smoke test case for Tier 1 retrieval testing."""
     question: str
@@ -152,6 +171,11 @@ class JurisdictionBase(ABC):
     def forbidden_topics(self) -> tuple[str, ...]:
         """Topics outside this jurisdiction's scope, referenced in system prompt enforcement."""
         return ()
+
+    @property
+    def confidence_config(self) -> ConfidenceConfig:
+        """Confidence thresholds and messages. Override for legislation-based jurisdictions."""
+        return ConfidenceConfig()
 
     @property
     def smoke_fixtures(self) -> list[SmokeFixture]:
