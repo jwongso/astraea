@@ -166,6 +166,32 @@ ROUTES: list[StatuteRoute] = [
         notes="Termination of periodic tenancy, notice periods (s51).",
     ),
     StatuteRoute(
+        intent="healthy_homes",
+        include_any=(
+            "healthy homes", "healthy home", "hhs",
+            "heating standard", "heating requirement", "minimum heating",
+            "insulation standard", "ceiling insulation", "underfloor insulation",
+            "ventilation standard", "extractor fan", "extraction fan",
+            "moisture barrier", "ground moisture", "draught stopping",
+            "draught standard", "draughts", "no insulation",
+            "s138b", "s45b", "s66i",
+        ),
+        forced_sections=(
+            "NZLEG/RTA/s138B",
+            "NZLEG/HHS2019/s8",   # heating: main living room qualifying heater
+            "NZLEG/HHS2019/s14",  # insulation: qualifying ceiling insulation
+            "NZLEG/HHS2019/s21",  # ventilation: openable windows/doors
+            "NZLEG/HHS2019/s26",  # draught: gaps and holes
+            "NZLEG/HHS2019/s28",  # moisture: ground moisture barrier
+        ),
+        synthetic_query=(
+            "healthy homes standards heating insulation ventilation moisture draught "
+            "residential tenancies act section 138B landlord obligations "
+            "extractor fan ceiling underfloor insulation draught stopping ground moisture barrier"
+        ),
+        notes="Healthy Homes Standards - heating, insulation, ventilation, moisture, draught (HHS2019).",
+    ),
+    StatuteRoute(
         intent="rent_payment",
         include_any=(
             "rent increase", "increase the rent", "raise the rent", "raised the rent",
