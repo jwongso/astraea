@@ -289,6 +289,86 @@ The floating button turns blue when context is set. Context persists until the u
 
 ---
 
+## MCP tool servers
+
+Every jurisdiction ships with an MCP server entry point so any MCP-capable agent
+(Claude Code, Claude Desktop, OpenClaw, or a custom agent) can call it as a tool.
+
+### Tools exposed by every jurisdiction
+
+| Tool | What it does |
+|---|---|
+| `legal_search` | Semantic search - returns sources with title, court, date, URL, score |
+| `legal_ask` | Full RAG - retrieves context, generates answer with section citations |
+| `legal_get_source` | Fetch the full text of a case/decision by its source ID |
+| `legal_get_legislation` | Fetch a legislation section by ID (e.g. `NZLEG/RTA/s42A`) |
+
+Building consents adds one extra tool:
+
+| Tool | What it does |
+|---|---|
+| `lookup_building_zone` | Geocode an NZ address and return its district plan zone (12 councils) |
+
+### Claude Desktop / Claude Code config
+
+Add to `~/.claude.json` (Claude Code) or `~/.claude_desktop_config.json` (Claude Desktop):
+
+```json
+{
+  "mcpServers": {
+    "nz-tenancy": {
+      "command": "python3",
+      "args": ["-m", "jurisdictions.nz_tenancy.mcp_server"],
+      "cwd": "/path/to/astraea"
+    },
+    "nz-legal": {
+      "command": "python3",
+      "args": ["-m", "jurisdictions.nz_legal.mcp_server"],
+      "cwd": "/path/to/astraea"
+    },
+    "nz-building": {
+      "command": "python3",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/path/to/buildingconsents"
+    }
+  }
+}
+```
+
+### Typical agent workflow
+
+For building consents, the agent should look up the zone first, then ask:
+
+```
+1. lookup_building_zone("123 Main Street, Nelson")
+   -> {"found": true, "council": "Nelson", "zone_name": "Inner City - Centre", ...}
+
+2. legal_ask("[Zone context: Nelson Inner City - Centre]\n\nDo I need a consent for a deck?")
+   -> {"answer": "...", "sources": [...]}
+```
+
+For tenancy, call `legal_ask` directly:
+
+```
+legal_ask("My landlord gave me 90 days notice to vacate. Is this valid?")
+```
+
+### Adding jurisdiction-specific tools
+
+Override `register_mcp_tools` on your jurisdiction class to add extra tools beyond the 4 core ones:
+
+```python
+def register_mcp_tools(self, mcp, service) -> None:
+    async def my_tool(param: str) -> str:
+        """Description the LLM uses to decide when to call this."""
+        ...
+    mcp.add_tool(my_tool, name="my_tool", description="...")
+```
+
+Called automatically by `create_mcp_server()` after the core tools are registered.
+
+---
+
 ## Qdrant payload schema
 
 All jurisdictions must produce chunks conforming to `schemas/qdrant_payload.schema.json`.
