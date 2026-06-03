@@ -1,0 +1,275 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+import os
+
+from core.jurisdiction import JurisdictionBase
+from core.pipeline import RAGPipeline
+from core.retriever import VectorStore
+from core.routing import allow_section, get_dominant_leg_allow_list, match_routes, normalize_query
+
+_ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
+
+# Module-level cross-encoder reranker (log-only in Phase 1).
+# Loaded lazily at first scored query; None when ENABLE_RERANKER=false.
+_reranker = None
+
+# Cache for synthetic query embeddings.
+# Route synthetic_query strings are fixed at startup - computing them once eliminates
+# per-request embed calls that add 1-2s latency each.
+_synth_vector_cache: dict[str, list[float]] = {}
+
+
+def _get_reranker():
+    global _reranker
+    if not _ENABLE_RERANKER:
+        return None
+    if _reranker is None:
+        from core.reranker import CrossEncoderReranker
+        _reranker = CrossEncoderReranker(log_only=True)
+    return _reranker
+
+
+def _is_leg_chunk(case_id: str) -> bool:
+    return "LEG" in case_id.upper().split("/")[0] if "/" in case_id else False
+
+
+async def _federated_leg_search(
+    vector: list[float],
+    leg_store: VectorStore,
+    leg_sources: list,
+    boosted_act_ids: set[str],
+) -> list:
+    """Run one Qdrant search per registered Act in parallel.
+
+    Each Act gets its own top_k quota so smaller Acts are not crowded out
+    by larger ones in a single global search.
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchValue
+
+    async def _search_one(src):
+        top_k = src.boost_top_k if src.act_id in boosted_act_ids else src.default_top_k
+        filt = Filter(must=[FieldCondition(key="court_name", match=MatchValue(value=src.court_name))])
+        return await asyncio.to_thread(leg_store.search_filtered, vector, filt, top_k)
+
+    batches = await asyncio.gather(*[_search_one(s) for s in leg_sources])
+    return [r for batch in batches for r in batch]
+
+
+async def _retrieve_anchor(
+    question: str,
+    original_question: str,
+    pipeline: RAGPipeline,
+    leg_store: VectorStore,
+    jurisdiction: JurisdictionBase,
+) -> tuple[str, list[dict]]:
+    """Retrieve legislation sections as anchor context.
+
+    Uses federated per-Act search when the jurisdiction registers leg_sources,
+    otherwise falls back to a single global legislation search. Route-forced
+    sections are always included as hard floor guarantees regardless of scores.
+
+    Returns (anchor_text_from_vstore, leg_sources).
+    """
+    if leg_store is None:
+        return "", []
+    try:
+        # Match routes before embedding - keyword matching, no network call
+        matched = match_routes(original_question or question, question, jurisdiction.routes)
+
+        vector = await pipeline._embedder.embed(question)
+
+        # Federated search: one search per registered Act with per-source top_k quotas.
+        # Falls back to single global search for jurisdictions without leg_sources.
+        leg_srcs = jurisdiction.leg_sources
+        if leg_srcs:
+            boosted_act_ids: set[str] = set()
+            for route in matched:
+                for sid in route.forced_sections:
+                    parts = sid.split("/")
+                    if len(parts) >= 2:
+                        boosted_act_ids.add(parts[1])
+            raw = await _federated_leg_search(vector, leg_store, leg_srcs, boosted_act_ids)
+        else:
+            raw = leg_store.search(vector, top_k=12)
+
+        # Route injection - floor guarantee: forced sections always reach the candidate pool.
+        # The re-ranker (future Phase 2) may reorder within the pool but cannot drop these.
+        injected_ids: list[str] = []
+        injections: list = []
+        seen_inject: set[str] = set()
+        for route in matched:
+            # Synth-vector embeddings are cached across requests because route.synthetic_query
+            # is a fixed string that never changes after startup.
+            if route.synthetic_query not in _synth_vector_cache:
+                _synth_vector_cache[route.synthetic_query] = await pipeline._embedder.embed(
+                    route.synthetic_query
+                )
+            synth_vector = _synth_vector_cache[route.synthetic_query]
+            leg_courts = list({
+                sid.split("/")[0] for sid in route.forced_sections
+                if "/" in sid and "LEG" in sid.split("/")[0].upper()
+            })
+            synth_raw = leg_store.search(
+                synth_vector,
+                top_k=len(route.forced_sections) + 10,
+                courts=leg_courts or None,
+            )
+            existing_ids = {h.case_id for h in raw}
+            for h in synth_raw:
+                if h.case_id in route.forced_sections and h.case_id not in seen_inject:
+                    if h.case_id in existing_ids:
+                        raw = [x for x in raw if x.case_id != h.case_id]
+                    injections.append(h)
+                    seen_inject.add(h.case_id)
+                    injected_ids.append(h.case_id)
+            for sid in route.forced_sections:
+                if sid not in seen_inject:
+                    h = leg_store.fetch_by_case_id(sid)
+                    if h:
+                        raw = [x for x in raw if x.case_id != h.case_id]
+                        injections.append(h)
+                        seen_inject.add(sid)
+                        injected_ids.append(sid)
+        raw = injections + raw
+
+        combined_q = normalize_query((original_question or question) + " " + question)
+        lp = jurisdiction.low_priority_sections
+        raw = [h for h in raw if allow_section(h.case_id, combined_q, lp)]
+
+        dominant_allow = get_dominant_leg_allow_list(matched)
+        if dominant_allow:
+            allow_set = set(dominant_allow)
+            raw = [h for h in raw if not _is_leg_chunk(h.case_id) or h.case_id in allow_set]
+
+        # Keep only legislation chunks - prevent case decisions from the same
+        # collection leaking into leg_sources (e.g. nz_legal has both).
+        raw = [h for h in raw if _is_leg_chunk(h.case_id)]
+
+        seen: set[str] = set()
+        hits = []
+        max_hits = max(3, len(injected_ids)) if injected_ids else 2
+        for h in raw:
+            if h.case_id not in seen:
+                seen.add(h.case_id)
+                hits.append(h)
+            if len(hits) >= max_hits:
+                break
+
+        if not hits:
+            return "", []
+
+        # Phase 1 - log cross-encoder scores for observability without affecting ranking.
+        # Compare these logs against route-based order to decide if/when to promote CE to ranking.
+        reranker = _get_reranker()
+        if reranker is not None:
+            try:
+                scored = await asyncio.to_thread(reranker.score, question, hits)
+                ce_log = [
+                    {"case_id": h.case_id, "ce_score": round(float(s), 4), "route_rank": i}
+                    for i, (h, s) in enumerate(scored)
+                ]
+                if ce_log:
+                    logging.getLogger(__name__).debug(
+                        "reranker_log federated=%s %s",
+                        bool(leg_srcs),
+                        ce_log,
+                    )
+            except Exception as exc:
+                logging.getLogger(__name__).warning("reranker score failed: %s", exc)
+
+        lines = [
+            "Relevant Act sections "
+            "(legislative context - use for grounding section numbers only, "
+            "do not cite with [SN] notation):"
+        ]
+        for h in hits:
+            lines.append(f"\n{h.title}\n{h.text[:600]}")
+
+        leg_sources_out = [
+            {"case_id": h.case_id, "title": h.title, "url": h.url}
+            for h in hits
+        ]
+        return "\n".join(lines), leg_sources_out
+    except Exception:
+        return "", []
+
+
+async def _augment_case_retrieval(
+    question: str,
+    retrieval_question: str,
+    pipeline: "RAGPipeline",
+    jurisdiction: "JurisdictionBase",
+    context_texts: list[str],
+    sources: list[dict],
+) -> tuple[list[str], list[dict]]:
+    """Run supplementary case retrieval for any matched route with case_synthetic_query."""
+    matched = match_routes(question, retrieval_question, jurisdiction.routes)
+    synth_queries = [r.case_synthetic_query for r in matched if r.case_synthetic_query]
+    if not synth_queries:
+        return context_texts, sources
+    existing_ids = {s["case_id"] for s in sources}
+    for csq in synth_queries:
+        extra_texts, extra_sources = await pipeline.retrieve(
+            csq, top_k=5, strategy="vector", min_score=0.70, min_chunks=1,
+        )
+        for txt, src in zip(extra_texts, extra_sources):
+            if src["case_id"] not in existing_ids and len(sources) < 8:
+                context_texts.append(txt)
+                sources.append(src)
+                existing_ids.add(src["case_id"])
+    return context_texts, sources
+
+
+def _dedupe_queries(original: str, rewritten: str) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for q in (original, rewritten):
+        norm = " ".join(q.lower().split())
+        if norm not in seen:
+            seen.add(norm)
+            result.append(q)
+    return result
+
+
+async def _refine_retrieve(
+    original_question: str,
+    rewritten_question: str,
+    pipeline: "RAGPipeline",
+    existing_sources: list[dict],
+    existing_texts: list[str],
+) -> tuple[list[str], list[dict]]:
+    """Second retrieval pass when initial confidence is low.
+
+    Uses the original (non-rewritten) question with relaxed parameters so that
+    context the rewriter dropped has a chance to surface.
+    """
+    existing_ids = {s["case_id"] for s in existing_sources}
+
+    new_texts: list[str] = []
+    new_sources: list[dict] = []
+
+    for query in _dedupe_queries(original_question, rewritten_question):
+        extra_texts, extra_sources = await pipeline.retrieve(
+            query, top_k=8, strategy="vector", min_score=0.65, min_chunks=1,
+        )
+        for txt, src in zip(extra_texts, extra_sources):
+            if src["case_id"] not in existing_ids:
+                new_texts.append(txt)
+                new_sources.append(src)
+                existing_ids.add(src["case_id"])
+
+    combined_texts = existing_texts + new_texts
+    combined_sources = existing_sources + new_sources
+    # Re-sort by score, keep at most 6
+    paired = sorted(
+        zip(combined_sources, combined_texts),
+        key=lambda x: x[0].get("_score", 0.0),
+        reverse=True,
+    )
+    paired = paired[:6]
+    if not paired:
+        return existing_texts, existing_sources
+    out_sources, out_texts = zip(*paired)
+    return list(out_texts), list(out_sources)
