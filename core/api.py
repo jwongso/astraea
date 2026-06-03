@@ -685,6 +685,18 @@ def create_app(
         allow_headers=["Content-Type"],
     )
 
+    # Shared Astraea frontend utilities served at /static/astraea/astraea.js
+    # Using explicit routes (not a StaticFiles mount) to avoid prefix conflict with /static.
+    _astraea_frontend = Path(__file__).parent / "frontend"
+    for _js_file in (_astraea_frontend.iterdir() if _astraea_frontend.is_dir() else []):
+        _js_path = _astraea_frontend / _js_file.name
+
+        @app.get(f"/static/astraea/{_js_file.name}", include_in_schema=False)
+        async def _serve_astraea_static(
+            _p: Path = _js_path,
+        ) -> FileResponse:
+            return FileResponse(_p, media_type="application/javascript")
+
     # Mount static files if the jurisdiction provides a static directory
     if _static_dir.exists():
         app.mount("/static", StaticFiles(directory=_static_dir), name="static")
