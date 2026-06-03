@@ -166,6 +166,24 @@ ROUTES: list[StatuteRoute] = [
         notes="Termination of periodic tenancy, notice periods (s51).",
     ),
     StatuteRoute(
+        intent="fixed_term_sell",
+        include_any=(
+            "fixed term tenancy sell", "fixed-term tenancy sell",
+            "sell the house", "sell the property", "want to sell",
+            "selling the house", "selling the property",
+            "list the property", "list the house", "before listing",
+            "vacant possession", "empty before", "vacant before",
+            "fixed term end early", "break fixed term",
+        ),
+        forced_sections=("NZLEG/RTA/s60A", "NZLEG/RTA/s50"),
+        synthetic_query=(
+            "landlord fixed term tenancy sell house vacant possession terminate early "
+            "mutual agreement section 50 section 60A periodic tenancy notice "
+            "residential tenancies act tenant rights fixed term expiry"
+        ),
+        notes="Landlord wants to sell with vacant possession during fixed-term (s60A, s50).",
+    ),
+    StatuteRoute(
         intent="healthy_homes",
         include_any=(
             "healthy homes", "healthy home", "hhs",
