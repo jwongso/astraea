@@ -181,6 +181,7 @@ ROUTES: list[StatuteRoute] = [
             "NZLEG/HHS2019/s8",   # heating: main living room qualifying heater
             "NZLEG/HHS2019/s14",  # insulation: qualifying ceiling insulation
             "NZLEG/HHS2019/s21",  # ventilation: openable windows/doors
+            "NZLEG/HHS2019/s23",  # ventilation: extraction fans in kitchens and bathrooms
             "NZLEG/HHS2019/s26",  # draught: gaps and holes
             "NZLEG/HHS2019/s28",  # moisture: ground moisture barrier
         ),
@@ -192,7 +193,26 @@ ROUTES: list[StatuteRoute] = [
         notes="Healthy Homes Standards - heating, insulation, ventilation, moisture, draught (HHS2019).",
     ),
     StatuteRoute(
-        intent="rent_payment",
+        intent="healthy_homes_facilities",
+        include_any=(
+            "carport light", "laundry light", "no light", "lighting in",
+            "lights in", "lights at", "adequate lighting", "working lights",
+            "smoke alarm", "carbon monoxide",
+        ),
+        forced_sections=(
+            "NZLEG/HHS2019/s21",  # ventilation: openable windows/doors
+            "NZLEG/HHS2019/s23",  # ventilation: extraction fans in kitchens and bathrooms
+            "NZLEG/HHS2019/s24",  # exemption from mechanical ventilation standard
+        ),
+        synthetic_query=(
+            "landlord obligations lighting smoke alarm carport laundry "
+            "healthy homes standards ventilation extraction fan requirements "
+            "habitable space facilities residential tenancy"
+        ),
+        notes="HHS facilities: lighting, smoke alarms - forces ventilation sections as grounding context.",
+    ),
+    StatuteRoute(
+        intent="rent_increase",
         include_any=(
             "rent increase", "increase the rent", "raise the rent", "raised the rent",
             "increase my rent", "increase rent", "increasing rent", "increasing my rent",
