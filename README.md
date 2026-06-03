@@ -96,6 +96,83 @@ Called at the end of `create_app()`. Route handlers access pipeline and store vi
 
 `nz_legal` uses this to expose `/search`, `/notable`, `/sentencing-tracker`, `/pg-tracker`, and `/contrasting-cases`.
 
+### Statute routing (`StatuteRoute`)
+
+**The retrieval problem routes solve**
+
+Vector search ranks sections by embedding similarity to the user's query. That works well
+when the question and the legislation share vocabulary. It fails in two common patterns:
+
+- **Sparse query coverage** - "sell the house" does not embed near "fixed-term tenancy becomes
+  periodic on expiry". The critical section never enters the top-k, even with a good model.
+- **Act crowding** - when the corpus contains a large Act (RTA, ~100+ sections) alongside a
+  small one (HHS 2019, ~20 sections), the large Act dominates embedding similarity. Every
+  healthy homes question returns mostly RTA chunks.
+
+A `StatuteRoute` fixes both problems for a known question type. It is not a reasoning patch -
+it is a retrieval patch. The LLM still has to reason correctly over whatever lands in context;
+routes ensure the right sections land there in the first place.
+
+**Defining a route**
+
+```python
+from core.routing import StatuteRoute
+
+StatuteRoute(
+    intent="fixed_term_sell",
+    include_any=(
+        "sell the house", "selling the property", "before listing",
+        "vacant possession", "fixed term end early",
+    ),
+    forced_sections=("NZLEG/RTA/s60A", "NZLEG/RTA/s50"),
+    synthetic_query=(
+        "landlord fixed term tenancy sell house vacant possession terminate early "
+        "mutual agreement section 50 section 60A periodic tenancy"
+    ),
+    notes="Landlord wants to sell during fixed-term (s60A, s50).",
+)
+```
+
+Fields:
+
+| Field | Purpose |
+|---|---|
+| `intent` | Slug used in logs and traces |
+| `include_any` | Lowercase substrings - any match triggers the route |
+| `forced_sections` | Document IDs always added to the candidate pool regardless of vector search |
+| `synthetic_query` | Alternative query run instead of (or alongside) the user query for legislation retrieval |
+| `notes` | Human note for code reviewers |
+
+**The hard floor guarantee**
+
+`forced_sections` are injected into the candidate pool before any ranking or deduplication.
+This means a cross-encoder reranker (Phase 2) can reorder freely without risking a critical
+section being dropped. Routes are the floor; reranking is the ceiling.
+
+**What routes do not fix**
+
+Routes are retrieval infrastructure. They do not fix:
+- LLM reasoning errors (applying the right section to the wrong party)
+- Hallucinated section numbers (the LLM inventing citations not in context)
+- Incorrect legal conclusions from correctly retrieved text
+
+These require system prompt tuning or a stronger model.
+
+**When routes become less necessary**
+
+Routes are a manual approximation of what a trained reranker learns automatically. As the
+corpus accumulates real user feedback (thumbs-up/down), a cross-encoder reranker trained on
+that signal will learn to surface the right sections without explicit keyword rules. Routes
+shrink from a large maintained list to a small set of hard guarantees for the most critical
+sections.
+
+A sufficiently capable model in an agentic loop (iterative tool-call retrieval) can also
+eliminate routes by asking for the sections it needs mid-generation. That architecture trades
+latency for route maintenance. For a single-pass streaming API the current approach is
+simpler and cheaper.
+
+---
+
 ### Federated per-Act legislation retrieval (`leg_sources`)
 
 By default, legislation retrieval does one vector search across the entire legislation collection.
