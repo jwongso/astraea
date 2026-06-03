@@ -141,6 +141,7 @@ class AskRequest(BaseModel):
     alwaysonline: bool = False
     address: str | None = None  # optional: geocoded to inject zone context via preprocess_question
     feedback_context: bool = False  # always emit context_debug for feedback capture (no debug_key required)
+    user_context: str = ""          # client-local context stored in localStorage, injected into anchor
 
 
 class RetrieveRequest(BaseModel):
@@ -393,6 +394,10 @@ def create_app(
                 session_ctx = _format_session_context(prior_turns)
                 if session_ctx:
                     anchor = session_ctx + ("\n\n---\n\n" + anchor if anchor else "")
+
+                user_ctx = req.user_context.strip()[:500] if req.user_context else ""
+                if user_ctx:
+                    anchor = "User's personal context (apply throughout your answer):\n" + user_ctx + ("\n\n---\n\n" + anchor if anchor else "")
 
                 yield f"data: {json.dumps({'type': 'sources', 'sources': public_sources, 'legislation': leg_sources})}\n\n"
                 if web_results:

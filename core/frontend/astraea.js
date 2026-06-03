@@ -220,6 +220,88 @@
     } catch (_) {}
   }
 
+  // ---- User context (localStorage, injected into every request) ----
+  const _CTX_STYLES = `
+.astraea-ctx-btn{position:fixed;bottom:1.25rem;right:1.25rem;width:42px;height:42px;border-radius:50%;border:none;background:#374151;color:#e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:900;transition:background .15s;}
+.astraea-ctx-btn:hover{background:#4b5563;}
+.astraea-ctx-btn.active{background:#1d4ed8;}
+.astraea-ctx-panel{position:fixed;bottom:4.8rem;right:1.25rem;width:300px;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:1rem;z-index:901;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.astraea-ctx-panel.hidden{display:none;}
+.astraea-ctx-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.astraea-ctx-hdr h3{margin:0;font-size:.9rem;color:#f3f4f6;font-weight:600;}
+.astraea-ctx-x{background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.1rem;line-height:1;padding:0;}
+.astraea-ctx-x:hover{color:#e5e7eb;}
+.astraea-ctx-hint{font-size:.75rem;color:#9ca3af;margin:0 0 .6rem;line-height:1.4;}
+.astraea-ctx-panel textarea{width:100%;box-sizing:border-box;background:#111827;color:#e5e7eb;border:1px solid #374151;border-radius:6px;padding:.5rem;font-size:.8rem;resize:vertical;min-height:80px;font-family:inherit;}
+.astraea-ctx-panel textarea::placeholder{color:#6b7280;}
+.astraea-ctx-char{font-size:.7rem;color:#6b7280;text-align:right;margin:.2rem 0 .6rem;}
+.astraea-ctx-actions{display:flex;gap:.5rem;justify-content:flex-end;}
+.astraea-ctx-actions button{padding:.35rem .75rem;border-radius:5px;border:none;cursor:pointer;font-size:.8rem;font-weight:500;}
+.astraea-ctx-clear{background:#374151;color:#e5e7eb;}
+.astraea-ctx-clear:hover{background:#4b5563;}
+.astraea-ctx-save{background:#1d4ed8;color:#fff;}
+.astraea-ctx-save:hover{background:#2563eb;}
+`;
+
+  function initUserContext(storageKey) {
+    if (!document.getElementById('astraea-ctx-styles')) {
+      const s = document.createElement('style');
+      s.id = 'astraea-ctx-styles';
+      s.textContent = _CTX_STYLES;
+      document.head.appendChild(s);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'astraea-ctx-btn';
+    btn.title = 'Your context';
+    btn.setAttribute('aria-label', 'Set your personal context');
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+
+    const panel = document.createElement('div');
+    panel.className = 'astraea-ctx-panel hidden';
+    panel.innerHTML = '<div class="astraea-ctx-hdr"><h3>Your context</h3><button class="astraea-ctx-x" aria-label="Close">&times;</button></div>'
+      + '<p class="astraea-ctx-hint">Tell the AI about your situation once. Stored in your browser only - sent with each question.</p>'
+      + '<textarea id="astraea-ctx-ta" rows="4" maxlength="500" placeholder="e.g. I am a tenant in Auckland. Periodic tenancy since March 2023. Landlord is a property management company."></textarea>'
+      + '<div class="astraea-ctx-char"><span id="astraea-ctx-n">0</span>/500</div>'
+      + '<div class="astraea-ctx-actions"><button class="astraea-ctx-clear">Clear</button><button class="astraea-ctx-save">Save</button></div>';
+
+    document.body.appendChild(btn);
+    document.body.appendChild(panel);
+
+    const ta = panel.querySelector('#astraea-ctx-ta');
+    const counter = panel.querySelector('#astraea-ctx-n');
+
+    function sync() { counter.textContent = ta.value.length; }
+    function loadSaved() {
+      ta.value = localStorage.getItem(storageKey) || '';
+      sync();
+      btn.classList.toggle('active', ta.value.length > 0);
+    }
+
+    loadSaved();
+    ta.addEventListener('input', sync);
+
+    btn.addEventListener('click', (e) => { e.stopPropagation(); loadSaved(); panel.classList.toggle('hidden'); });
+    panel.querySelector('.astraea-ctx-x').addEventListener('click', () => panel.classList.add('hidden'));
+
+    panel.querySelector('.astraea-ctx-save').addEventListener('click', () => {
+      const val = ta.value.trim();
+      val ? localStorage.setItem(storageKey, val) : localStorage.removeItem(storageKey);
+      btn.classList.toggle('active', val.length > 0);
+      panel.classList.add('hidden');
+    });
+
+    panel.querySelector('.astraea-ctx-clear').addEventListener('click', () => { ta.value = ''; sync(); });
+
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== btn) panel.classList.add('hidden');
+    });
+  }
+
+  function getUserContext(storageKey) {
+    return localStorage.getItem(storageKey) || '';
+  }
+
   // ---- Disclaimer modal ----
   function initDisclaimer(storageKey) {
     if (localStorage.getItem(storageKey)) return;
@@ -247,6 +329,8 @@
     pollQueue,
     saveFullFeedback,
     initDisclaimer,
+    initUserContext,
+    getUserContext,
   };
 
 })(window);
