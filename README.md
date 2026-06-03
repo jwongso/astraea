@@ -21,6 +21,28 @@ app = create_app(jurisdiction)
 
 ---
 
+## Installation
+
+```bash
+pip install astraea-framework
+```
+
+For local development:
+
+```bash
+git clone https://github.com/jwongso/astraea
+pip install -e .
+```
+
+Client apps should pin to a minor version floor:
+
+```toml
+# pyproject.toml
+dependencies = ["astraea-framework>=0.2.0"]
+```
+
+---
+
 ## Design principles
 
 - **One process = one jurisdiction.** No multi-tenancy, no plugin registry. Simple deployment.
@@ -138,6 +160,56 @@ SmokeFixture(
 )
 ```
 
+### Shared frontend utilities (`window.Astraea`)
+
+All Astraea apps automatically serve `/static/astraea/astraea.js` from `core/frontend/`.
+Load it before your jurisdiction's `app.js`:
+
+```html
+<script src="/static/astraea/astraea.js"></script>
+<script src="/static/app.js"></script>
+```
+
+This exposes a `window.Astraea` namespace with shared rendering and API utilities:
+
+| Function | Purpose |
+|---|---|
+| `renderAnswer(text)` | Markdown-to-HTML: lists, tables, headings, bold, citations, URL auto-link |
+| `renderSources(sources, leg, opts)` | Source cards with optional legislation toggle |
+| `renderConfidence(ev, container)` | Confidence badge insertion |
+| `streamEvents(response, onEvent)` | SSE reader loop (async) |
+| `loadToken()` | Fetch public API token from `/token` |
+| `pollQueue(el)` | Update queue status notice element from `/health` |
+| `saveFullFeedback(payload, rating, comment, isDebug, token)` | POST to `/feedback/full` |
+| `initDisclaimer(storageKey)` | localStorage-keyed disclaimer modal (reads existing HTML) |
+| `initUserContext(storageKey)` | Floating context panel - see below |
+| `getUserContext(storageKey)` | Read stored context string for inclusion in requests |
+
+### User-local memory (`initUserContext`)
+
+Users can store persistent personal context (role, location, situation) in `localStorage`.
+It is prepended to the LLM anchor on every request and never stored server-side.
+
+Client apps opt in with two calls:
+
+```javascript
+// Init once - injects a floating person-icon button into the page
+Astraea.initUserContext('myapp_user_ctx');
+
+// Include in every /ask/stream POST body
+body: JSON.stringify({
+  question,
+  user_context: Astraea.getUserContext('myapp_user_ctx'),
+  // ...
+})
+```
+
+The backend field is `user_context: str = ""` on `AskRequest` (capped at 500 chars).
+It is inserted above session history and legislation in the prompt anchor under the label
+`"User's personal context (apply throughout your answer):"`.
+
+The floating button turns blue when context is set. Context persists until the user clears it.
+
 ---
 
 ## Qdrant payload schema
@@ -169,14 +241,16 @@ Required fields: `document_id`, `court`, `court_name`, `title`, `date`, `url`, `
 - [x] Milestone 3 - CONTRIBUTING.md, packaging, NSW NCAT scraper + corpus (225+ decisions)
 - [x] Milestone 4 - `nz_legal` migration: tracker endpoints, contrasting cases, `register_routes` hook
 - [x] Milestone 5 - federated per-Act legislation retrieval, Healthy Homes Standards 2019 corpus, cross-encoder reranker (Phase 1 log-only), Qdrant payload indexes for fast filtered search
+- [x] Milestone 6 - published to PyPI as `astraea-framework`, shared frontend utilities (`window.Astraea` namespace served from core), modular core (`anchor.py`, `web_verify.py`, `session.py`), user-local memory (`initUserContext` / `getUserContext`)
 
 ---
 
-## Related project
+## Related projects
 
-The NZ tenancy tool running on this framework: https://tenancy.localrun.ai
-
-Source: https://github.com/jwongso/nz-legal-rag
+| App | URL | Source |
+|---|---|---|
+| NZ Tenancy Help | https://tenancy.localrun.ai | https://github.com/jwongso/nz-legal-rag |
+| NZ Building Consents Help | https://buildingconsents.localrun.ai | https://github.com/jwongso/buildingconsents |
 
 ---
 
