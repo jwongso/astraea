@@ -334,6 +334,25 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 forbidden_routes=["healthy_homes"],
                 description="healthy_homes negative - broken hot water is repairs, not healthy homes",
             ),
+            # --- two-tier trigger tests for property_change ---
+            RouteFixture(
+                question="The landlord has been mowing the lawn and trimming trees at the property.",
+                expected_routes=[],
+                forbidden_routes=["property_change"],
+                description="two-tier: bare broad terms (lawn, trees) with no consent context must NOT fire property_change",
+            ),
+            RouteFixture(
+                question="I planted a tree in the garden without getting the landlord's consent. Am I in breach?",
+                expected_routes=["property_change"],
+                forbidden_routes=[],
+                description="two-tier: broad term (tree, garden) + consent context MUST fire property_change",
+            ),
+            RouteFixture(
+                question="I made an alteration to the bathroom without telling my landlord.",
+                expected_routes=["property_change"],
+                forbidden_routes=[],
+                description="two-tier: precise term (alteration) fires property_change unconditionally",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:

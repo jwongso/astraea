@@ -33,6 +33,21 @@ class StatuteRoute:
     notes: str = ""
     case_synthetic_query: str = ""  # if set, a supplementary case retrieval pass runs with this query
 
+    # Two-tier trigger matching - use instead of include_any for routes with
+    # broad terms that collide in adjacent query contexts.
+    #
+    # include_any_precise: fires unconditionally - terms unambiguous on their own
+    # include_any_broad:   fires only when require_context_any also matches
+    # require_context_any: context gate for broad terms; ignored when a precise
+    #                      term matched; should be multi-word phrases or highly
+    #                      specific single words (not "tenant", "landlord")
+    #
+    # When any of these are non-empty, include_any is ignored for matching.
+    # Routes without collisions keep include_any and need no changes.
+    include_any_precise: tuple[str, ...] = ()
+    include_any_broad: tuple[str, ...] = ()
+    require_context_any: tuple[str, ...] = ()
+
 
 @dataclass(frozen=True)
 class RouteDecision:
@@ -58,16 +73,35 @@ def normalize_query(text: str) -> str:
     return " ".join(text.lower().replace("-", " ").split())
 
 
+def _route_triggered(route: StatuteRoute, q: str) -> bool:
+    """Return True if the route's trigger terms match the normalized query.
+
+    Two-tier mode (when include_any_precise or include_any_broad is set):
+      - Precise terms fire unconditionally.
+      - Broad terms fire only when at least one require_context_any term also
+        appears in the query.
+    Legacy mode (include_any only): original flat-list behavior.
+    """
+    if route.include_any_precise or route.include_any_broad:
+        if any(t in q for t in route.include_any_precise):
+            return True
+        if any(t in q for t in route.include_any_broad):
+            return any(t in q for t in route.require_context_any)
+        return False
+    return any(t in q for t in route.include_any)
+
+
 def _match_routes(q: str, routes: list[StatuteRoute]) -> list[StatuteRoute]:
     """Match a normalized combined query string against the route table."""
     matches: list[StatuteRoute] = []
     for route in routes:
         if route.exclude_any and any(term in q for term in route.exclude_any):
             continue
-        any_ok = any(term in q for term in route.include_any)
-        all_ok = (not route.include_all) or all(term in q for term in route.include_all)
-        if any_ok and all_ok:
-            matches.append(route)
+        if not _route_triggered(route, q):
+            continue
+        if route.include_all and not all(t in q for t in route.include_all):
+            continue
+        matches.append(route)
     return matches
 
 

@@ -30,12 +30,32 @@ ROUTES: list[StatuteRoute] = [
     ),
     StatuteRoute(
         intent="property_change",
-        include_any=(
+        include_any=(),  # unused - two-tier mode active
+        include_any_precise=(
+            "alteration", "alter", "altered",
+            "minor change",
+            "renovate", "renovation",
+            "without consent", "without permission",
+            "landlord consent", "written consent", "written permission",
+            "landlord permission",
+            "planted trees", "planted a tree", "planted several",
+            "plant trees", "plant a tree",
+        ),
+        include_any_broad=(
             "plant", "planted", "tree", "trees", "shrub", "hedge",
             "garden", "backyard", "back yard", "lawn",
-            "fixture", "alteration", "alter", "altered",
-            "install", "installed", "renovate", "renovation",
-            "minor change", "improvement", "fence",
+            "fence",
+            "fixture",
+            "install", "installed",
+            "improvement",
+        ),
+        require_context_any=(
+            "consent", "permission",
+            "without consent", "without permission",
+            "landlord consent", "landlord's consent",
+            "written consent", "written permission",
+            "landlord permission", "landlord's permission",
+            "alteration", "minor change", "improvement",
         ),
         exclude_any=(
             "healthy homes", "building code", "building act",
