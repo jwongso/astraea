@@ -23,7 +23,7 @@ class TestRouteFixtures:
             f"per route (positive + negative)"
         )
 
-    @pytest.mark.parametrize("fixture_index", range(35))
+    @pytest.mark.parametrize("fixture_index", range(40))
     def test_route_fixture(self, jurisdiction, fixture_index):
         fixtures = jurisdiction.route_fixtures
         if fixture_index >= len(fixtures):
