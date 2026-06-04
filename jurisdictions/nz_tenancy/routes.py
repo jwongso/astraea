@@ -245,6 +245,27 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="Rent increases by notice or order (s28, s28A).",
     ),
+    StatuteRoute(
+        intent="tenant_early_exit",
+        include_any=(
+            "leave early", "leave the tenancy early", "end the tenancy early",
+            "move out before", "moving out before", "get out of the tenancy",
+            "exit the lease", "exit the tenancy", "break the lease",
+            "job offer", "new job", "job opportunity", "farm job",
+            "relocating", "moving city", "moving town", "moving region",
+            "partner got a job", "offered a job", "offered housing",
+            "how do i get out", "how to get out", "how can i leave",
+            "want to leave", "want to move out", "need to move out",
+            "early termination tenant", "tenant terminate early",
+        ),
+        forced_sections=("NZLEG/RTA/s50", "NZLEG/RTA/s66"),
+        synthetic_query=(
+            "tenant fixed term tenancy leave early mutual agreement landlord consent "
+            "section 50 termination agreement section 66 assignment subletting "
+            "replacement tenant liability rent fixed term break lease early exit"
+        ),
+        notes="Tenant wants to leave a fixed-term early (job, relocation, hardship). s50=mutual termination, s66=assignment.",
+    ),
 ]
 
 LOW_PRIORITY_SECTIONS: dict[str, tuple[str, ...]] = {

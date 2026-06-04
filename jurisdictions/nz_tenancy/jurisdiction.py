@@ -149,6 +149,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s138B", "NZLEG/HHS2019/s8", "NZLEG/HHS2019/s14"],
                 description="healthy_homes route - HHS2019 heating and insulation requirements surface alongside RTA s138B",
             ),
+            SmokeFixture(
+                question="I am on a fixed-term tenancy for a year and my partner has been offered a job with free housing. Can I leave the tenancy early?",
+                expected_sections=["NZLEG/RTA/s50", "NZLEG/RTA/s66"],
+                description="tenant_early_exit route - tenant wants to leave fixed-term early, mutual termination and assignment",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
