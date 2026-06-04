@@ -43,7 +43,7 @@ from core.queue import (
     queue_status, queue_wait_estimate, release, will_wait,
 )
 from core.retriever import VectorStore
-from core.routing import match_routes
+from core.routing import build_route_decision
 from core.sanitize import sanitize_question
 from core.security import BodySizeLimitMiddleware, SecurityHeadersMiddleware
 from core.session import _format_session_context, _load_session, _save_session
@@ -411,15 +411,17 @@ def create_app(
                     def _tok(text: str) -> int:
                         return max(1, round(len(text) / 4))
 
-                    matched_routes = match_routes(question, retrieval_question, jur.routes)
+                    decision = build_route_decision(question, retrieval_question, jur.routes)
                     routing_ev = {
-                        "triggered": bool(matched_routes),
-                        "matched_routes": [r.intent for r in matched_routes],
-                        "trigger_terms": list({
-                            t for r in matched_routes for t in r.include_any
-                        }),
-                        "forced_sections": [
-                            s for r in matched_routes for s in r.forced_sections
+                        "triggered": decision.triggered,
+                        "matched_routes": list(decision.matched_intents),
+                        "trigger_terms": list(decision.trigger_terms),
+                        "forced_sections": list(decision.forced_sections),
+                        "dominant_route": decision.dominant_route,
+                        "dominance_reason": decision.dominance_reason,
+                        "ignored_routes": [
+                            {"route": r, "reason": reason}
+                            for r, reason in decision.ignored_routes
                         ],
                     }
                     anchor_sections = [

@@ -7,7 +7,7 @@ import os
 from core.jurisdiction import JurisdictionBase
 from core.pipeline import RAGPipeline
 from core.retriever import VectorStore
-from core.routing import allow_section, get_dominant_leg_allow_list, match_routes, normalize_query
+from core.routing import allow_section, build_route_decision, normalize_query
 
 _ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
 
@@ -75,8 +75,10 @@ async def _retrieve_anchor(
     if leg_store is None:
         return "", []
     try:
-        # Match routes before embedding - keyword matching, no network call
-        matched = match_routes(original_question or question, question, jurisdiction.routes)
+        # Build route decision before embedding - keyword matching, no network call
+        decision = build_route_decision(
+            original_question or question, question, jurisdiction.routes
+        )
 
         vector = await pipeline._embedder.embed(question)
 
@@ -84,63 +86,54 @@ async def _retrieve_anchor(
         # Falls back to single global search for jurisdictions without leg_sources.
         leg_srcs = jurisdiction.leg_sources
         if leg_srcs:
-            boosted_act_ids: set[str] = set()
-            for route in matched:
-                for sid in route.forced_sections:
-                    parts = sid.split("/")
-                    if len(parts) >= 2:
-                        boosted_act_ids.add(parts[1])
-            raw = await _federated_leg_search(vector, leg_store, leg_srcs, boosted_act_ids)
+            raw = await _federated_leg_search(vector, leg_store, leg_srcs, decision.boosted_act_ids)
         else:
             raw = leg_store.search(vector, top_k=12)
 
         # Route injection - floor guarantee: forced sections always reach the candidate pool.
-        # The re-ranker (future Phase 2) may reorder within the pool but cannot drop these.
+        # Synthetic query embeddings are cached; strings are fixed at startup so cost is
+        # paid once per unique query string, not per request.
         injected_ids: list[str] = []
         injections: list = []
         seen_inject: set[str] = set()
-        for route in matched:
-            # Synth-vector embeddings are cached across requests because route.synthetic_query
-            # is a fixed string that never changes after startup.
-            if route.synthetic_query not in _synth_vector_cache:
-                _synth_vector_cache[route.synthetic_query] = await pipeline._embedder.embed(
-                    route.synthetic_query
-                )
-            synth_vector = _synth_vector_cache[route.synthetic_query]
-            leg_courts = list({
-                sid.split("/")[0] for sid in route.forced_sections
-                if "/" in sid and "LEG" in sid.split("/")[0].upper()
-            })
+        forced_sections_set = set(decision.forced_sections)
+        leg_courts = list({
+            sid.split("/")[0] for sid in decision.forced_sections
+            if "/" in sid and "LEG" in sid.split("/")[0].upper()
+        })
+        for synth_q in decision.leg_synthetic_queries:
+            if synth_q not in _synth_vector_cache:
+                _synth_vector_cache[synth_q] = await pipeline._embedder.embed(synth_q)
+            synth_vector = _synth_vector_cache[synth_q]
             synth_raw = leg_store.search(
                 synth_vector,
-                top_k=len(route.forced_sections) + 10,
+                top_k=len(decision.forced_sections) + 10,
                 courts=leg_courts or None,
             )
             existing_ids = {h.case_id for h in raw}
             for h in synth_raw:
-                if h.case_id in route.forced_sections and h.case_id not in seen_inject:
+                if h.case_id in forced_sections_set and h.case_id not in seen_inject:
                     if h.case_id in existing_ids:
                         raw = [x for x in raw if x.case_id != h.case_id]
                     injections.append(h)
                     seen_inject.add(h.case_id)
                     injected_ids.append(h.case_id)
-            for sid in route.forced_sections:
-                if sid not in seen_inject:
-                    h = leg_store.fetch_by_case_id(sid)
-                    if h:
-                        raw = [x for x in raw if x.case_id != h.case_id]
-                        injections.append(h)
-                        seen_inject.add(sid)
-                        injected_ids.append(sid)
+        for sid in decision.forced_sections:
+            if sid not in seen_inject:
+                h = leg_store.fetch_by_case_id(sid)
+                if h:
+                    raw = [x for x in raw if x.case_id != h.case_id]
+                    injections.append(h)
+                    seen_inject.add(sid)
+                    injected_ids.append(sid)
         raw = injections + raw
 
         combined_q = normalize_query((original_question or question) + " " + question)
         lp = jurisdiction.low_priority_sections
         raw = [h for h in raw if allow_section(h.case_id, combined_q, lp)]
 
-        dominant_allow = get_dominant_leg_allow_list(matched)
-        if dominant_allow:
-            allow_set = set(dominant_allow)
+        if decision.leg_allow_list:
+            allow_set = set(decision.leg_allow_list)
             raw = [h for h in raw if not _is_leg_chunk(h.case_id) or h.case_id in allow_set]
 
         # Keep only legislation chunks - prevent case decisions from the same
@@ -205,12 +198,11 @@ async def _augment_case_retrieval(
     sources: list[dict],
 ) -> tuple[list[str], list[dict]]:
     """Run supplementary case retrieval for any matched route with case_synthetic_query."""
-    matched = match_routes(question, retrieval_question, jurisdiction.routes)
-    synth_queries = [r.case_synthetic_query for r in matched if r.case_synthetic_query]
-    if not synth_queries:
+    decision = build_route_decision(question, retrieval_question, jurisdiction.routes)
+    if not decision.case_synthetic_queries:
         return context_texts, sources
     existing_ids = {s["case_id"] for s in sources}
-    for csq in synth_queries:
+    for csq in decision.case_synthetic_queries:
         extra_texts, extra_sources = await pipeline.retrieve(
             csq, top_k=5, strategy="vector", min_score=0.70, min_chunks=1,
         )
