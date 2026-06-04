@@ -266,6 +266,25 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="Tenant wants to leave a fixed-term early (job, relocation, hardship). s50=mutual termination, s66=assignment.",
     ),
+    StatuteRoute(
+        intent="carpark_dispute",
+        include_any=(
+            "carpark", "car park", "car parks", "carparks",
+            "parking space", "parking spaces", "parking bay",
+            "parking included", "park my car", "use the garage",
+            "garage included", "remove carpark", "lose carpark",
+            "take away carpark", "vacate carpark", "vacate the carpark",
+        ),
+        forced_sections=("NZLEG/RTA/s45", "NZLEG/RTA/s13A"),
+        synthetic_query=(
+            "landlord remove carpark parking space included tenancy agreement "
+            "tenant facilities services agreed quiet enjoyment obligation "
+            "section 45 landlord obligation section 13A tenancy agreement contents "
+            "rent reduction loss of amenity agreed services"
+        ),
+        leg_allow_list=("NZLEG/RTA/s45", "NZLEG/RTA/s13A"),
+        notes="Carpark/parking dispute - landlord removing agreed facility. s45=landlord obligations, s13A=tenancy agreement contents.",
+    ),
 ]
 
 LOW_PRIORITY_SECTIONS: dict[str, tuple[str, ...]] = {

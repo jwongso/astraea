@@ -154,6 +154,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s50", "NZLEG/RTA/s66"],
                 description="tenant_early_exit route - tenant wants to leave fixed-term early, mutual termination and assignment",
             ),
+            SmokeFixture(
+                question="My rent includes 2 carparks and my landlord is asking me to vacate one. Can I get a rent reduction?",
+                expected_sections=["NZLEG/RTA/s45", "NZLEG/RTA/s13A"],
+                description="carpark_dispute route - landlord removing agreed carpark, s45 landlord obligations and s13A tenancy agreement contents",
+            ),
         ]
 
     def format_source_label(self, source: dict) -> str:
