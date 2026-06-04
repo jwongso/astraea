@@ -15,8 +15,9 @@ ROUTES: list[StatuteRoute] = [
             "tenant damage", "damage claim", "repair cost",
             "landlord charge", "liable for damage", "damage to the",
             "worn", "deteriorated", "deterioration",
-            "carpet damage", "carpet replacement", "carpet clean",
+            "carpet damage", "carpet replacement", "carpet clean", "carpet wear",
             "bond deduction", "deducting from", "deduct from bond",
+            "withholding my bond", "withheld my bond", "withhold my bond",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
@@ -36,6 +37,16 @@ ROUTES: list[StatuteRoute] = [
             "install", "installed", "renovate", "renovation",
             "minor change", "improvement", "fence",
         ),
+        exclude_any=(
+            "healthy homes", "building code", "building act",
+            "resource management act",
+            "plumbing", "sewage", "shower drain",
+            "landlord failed to maintain", "landlord hasn't maintained",
+            "landlord has not maintained",
+            "not repaired", "not fixed", "won't fix", "wont fix",
+            "hasn't fixed", "hasnt fixed",
+            "broken", "not working",
+        ),
         forced_sections=("NZLEG/RTA/s40", "NZLEG/RTA/s42A", "NZLEG/RTA/s42B"),
         synthetic_query=(
             "tenant obligations alter improve add fixtures to land garden "
@@ -50,6 +61,7 @@ ROUTES: list[StatuteRoute] = [
         include_any=(
             "not working", "broken", "won't fix", "wont fix",
             "hasn't fixed", "hasnt fixed", "not fixed", "not repaired",
+            "not maintained", "hasn't maintained", "has not maintained",
             "repair request", "maintenance",
             "hot water", "no hot water", "heating", "no heating",
             "mould", "mold", "damp", "dampness", "moisture", "mildew",
@@ -62,6 +74,12 @@ ROUTES: list[StatuteRoute] = [
         ),
         exclude_any=(
             "fair wear and tear", "wear and tear",
+            "install fixture", "installed fixture",
+            "minor change", "minor improvement",
+            "plant trees", "planted trees", "planting trees",
+            "alteration", "altered",
+            "renovation without consent", "renovate without",
+            "healthy homes",
         ),
         forced_sections=("NZLEG/RTA/s45",),
         synthetic_query=(
@@ -94,6 +112,8 @@ ROUTES: list[StatuteRoute] = [
             "bond before", "bond form", "bond help",
             "work and income", "winz", "bond guarantee",
             "can pay the bond", "pay the bond",
+            "lodged my bond", "lodged the bond",
+            "not lodged", "hasn't lodged", "has not lodged",
             "s18",
         ),
         forced_sections=("NZLEG/RTA/s18",),
@@ -233,6 +253,7 @@ ROUTES: list[StatuteRoute] = [
         intent="rent_increase",
         include_any=(
             "rent increase", "increase the rent", "raise the rent", "raised the rent",
+            "increased the rent", "increased my rent",
             "increase my rent", "increase rent", "increasing rent", "increasing my rent",
             "rent rise", "rent review", "maximum rent", "rent in advance",
             "weeks rent in advance", "how much rent", "notice to increase",

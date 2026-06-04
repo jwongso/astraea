@@ -62,6 +62,7 @@ target-version = "py311"
 asyncio_mode = "auto"
 pythonpath = ["."]
 markers = [
+    "routing: Tier 0 - pure keyword routing, no Qdrant or LLM required",
     "retrieval: Tier 1 - Qdrant only, no LLM required",
     "structural: Tier 2 - LLM required, non-semantic checks",
     "llm: Tier 3 - LLM required, semantic answer quality",

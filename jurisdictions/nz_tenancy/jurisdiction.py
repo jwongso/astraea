@@ -9,6 +9,7 @@ from core.jurisdiction import (
     JurisdictionBase,
     LegislationConfig,
     LegislationSource,
+    RouteFixture,
     SmokeFixture,
     WebVerifyConfig,
 )
@@ -158,6 +159,180 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 question="My rent includes 2 carparks and my landlord is asking me to vacate one. Can I get a rent reduction?",
                 expected_sections=["NZLEG/RTA/s45", "NZLEG/RTA/s13A"],
                 description="carpark_dispute route - landlord removing agreed carpark, s45 landlord obligations and s13A tenancy agreement contents",
+            ),
+        ]
+
+    @property
+    def route_fixtures(self) -> list[RouteFixture]:
+        return [
+            # --- wear_and_tear ---
+            RouteFixture(
+                question="The carpet has worn out after 8 years. Can the landlord charge me for replacement?",
+                expected_routes=["wear_and_tear"],
+                forbidden_routes=["property_change"],
+                description="wear_and_tear positive - worn carpet after 8 years",
+            ),
+            RouteFixture(
+                question="I installed new carpet in the bedroom as a minor improvement without asking the landlord.",
+                expected_routes=["property_change"],
+                forbidden_routes=["wear_and_tear"],
+                description="wear_and_tear negative - carpet install is property_change, not wear_and_tear",
+            ),
+            # --- property_change ---
+            RouteFixture(
+                question="I planted several trees in the backyard without getting landlord consent. Is that allowed?",
+                expected_routes=["property_change"],
+                forbidden_routes=["repairs_maintenance"],
+                description="property_change positive - trees in backyard without consent",
+            ),
+            RouteFixture(
+                question="The garden fence is broken and leaking water. My landlord won't fix it.",
+                expected_routes=["repairs_maintenance"],
+                forbidden_routes=["property_change"],
+                description="property_change negative - broken fence is repairs, not alteration",
+            ),
+            # --- repairs_maintenance ---
+            RouteFixture(
+                question="There is mould on the bedroom ceiling and my landlord refuses to fix it.",
+                expected_routes=["repairs_maintenance"],
+                forbidden_routes=["property_change"],
+                description="repairs_maintenance positive - mould",
+            ),
+            RouteFixture(
+                question="I want to install a new fixture in the bathroom without landlord consent. Is that an alteration?",
+                expected_routes=["property_change"],
+                forbidden_routes=["repairs_maintenance"],
+                description="repairs_maintenance negative - install fixture is property_change",
+            ),
+            # --- landlord_entry ---
+            RouteFixture(
+                question="My landlord came in without giving me 24 hours notice. What are my rights?",
+                expected_routes=["landlord_entry"],
+                forbidden_routes=["repairs_maintenance"],
+                description="landlord_entry positive - entry without notice",
+            ),
+            RouteFixture(
+                question="My landlord is not maintaining the property and will not fix the broken stove.",
+                expected_routes=["repairs_maintenance"],
+                forbidden_routes=["landlord_entry"],
+                description="landlord_entry negative - maintenance failure is repairs, not entry",
+            ),
+            # --- agreement_form ---
+            RouteFixture(
+                question="My landlord never gave me a copy of the tenancy agreement after I signed it.",
+                expected_routes=["agreement_form"],
+                forbidden_routes=["bond"],
+                description="agreement_form positive - copy of signed tenancy agreement",
+            ),
+            RouteFixture(
+                question="My landlord asked me to sign a bond form but I have not received a receipt.",
+                expected_routes=["bond"],
+                forbidden_routes=["agreement_form"],
+                description="agreement_form negative - bond receipt, not tenancy agreement",
+            ),
+            # --- bond ---
+            RouteFixture(
+                question="My landlord still has not lodged my bond with Tenancy Services after 3 weeks.",
+                expected_routes=["bond"],
+                forbidden_routes=["rent_increase"],
+                description="bond positive - bond not lodged",
+            ),
+            RouteFixture(
+                question="My landlord increased the rent last month. What is the maximum allowed?",
+                expected_routes=["rent_increase"],
+                forbidden_routes=["bond"],
+                description="bond negative - rent increase question, not bond",
+            ),
+            # --- rent_increase ---
+            RouteFixture(
+                question="My landlord wants to increase my rent by $200 per week. How much notice do they need to give?",
+                expected_routes=["rent_increase"],
+                forbidden_routes=["wear_and_tear"],
+                description="rent_increase positive - rent increase notice",
+            ),
+            RouteFixture(
+                question="My landlord is withholding my bond claiming carpet wear.",
+                expected_routes=["wear_and_tear"],
+                forbidden_routes=["rent_increase"],
+                description="rent_increase negative - bond and wear, not rent increase",
+            ),
+            # --- termination_notice ---
+            RouteFixture(
+                question="My landlord gave me a 90 day eviction notice even though I have done nothing wrong.",
+                expected_routes=["termination_notice"],
+                forbidden_routes=["tenant_early_exit"],
+                description="termination_notice positive - 90 day no-cause notice",
+            ),
+            RouteFixture(
+                question="I want to leave my fixed term tenancy early because I got a job offer in another city.",
+                expected_routes=["tenant_early_exit"],
+                forbidden_routes=["termination_notice"],
+                description="termination_notice negative - tenant leaving early is tenant_early_exit",
+            ),
+            # --- fixed_term_sell ---
+            RouteFixture(
+                question="My landlord wants to sell the house and needs us to vacate before listing it. We are on a fixed term.",
+                expected_routes=["fixed_term_sell"],
+                forbidden_routes=["termination_notice"],
+                description="fixed_term_sell positive - landlord selling during fixed term",
+            ),
+            RouteFixture(
+                question="My landlord increased the rent while I am still on a fixed term tenancy.",
+                expected_routes=["rent_increase"],
+                forbidden_routes=["fixed_term_sell"],
+                description="fixed_term_sell negative - rent increase during fixed term",
+            ),
+            # --- tenant_early_exit ---
+            RouteFixture(
+                question="My partner has been offered a farm job with free housing. Can I leave the fixed term tenancy early?",
+                expected_routes=["tenant_early_exit"],
+                forbidden_routes=["termination_notice"],
+                description="tenant_early_exit positive - partner job offer, fixed term",
+            ),
+            RouteFixture(
+                question="I want to end the tenancy because my landlord has not maintained the property.",
+                expected_routes=["termination_notice", "repairs_maintenance"],
+                forbidden_routes=["tenant_early_exit"],
+                description="tenant_early_exit negative - ending tenancy for landlord breach",
+            ),
+            # --- sham_flatmate_agreement ---
+            RouteFixture(
+                question="We are on a flatmate agreement but our landlord does not live at the property at all.",
+                expected_routes=["sham_flatmate_agreement"],
+                forbidden_routes=["agreement_form"],
+                description="sham_flatmate_agreement positive - landlord not resident",
+            ),
+            RouteFixture(
+                question="I have a dispute with my landlord about the tenancy agreement terms.",
+                expected_routes=["agreement_form"],
+                forbidden_routes=["sham_flatmate_agreement"],
+                description="sham_flatmate_agreement negative - tenancy agreement dispute, not sham",
+            ),
+            # --- carpark_dispute ---
+            RouteFixture(
+                question="My landlord is asking me to vacate one of my two carparks that came with the tenancy.",
+                expected_routes=["carpark_dispute"],
+                forbidden_routes=["repairs_maintenance"],
+                description="carpark_dispute positive - landlord removing agreed carpark",
+            ),
+            RouteFixture(
+                question="The garage door is broken and my landlord will not repair it.",
+                expected_routes=["repairs_maintenance"],
+                forbidden_routes=["carpark_dispute"],
+                description="carpark_dispute negative - broken garage door is repairs, not carpark dispute",
+            ),
+            # --- healthy_homes ---
+            RouteFixture(
+                question="My rental has no ceiling insulation and the heating does not meet the healthy homes standards.",
+                expected_routes=["healthy_homes"],
+                forbidden_routes=["repairs_maintenance"],
+                description="healthy_homes positive - insulation and healthy homes standards",
+            ),
+            RouteFixture(
+                question="The hot water cylinder is not working and my landlord has not fixed it in two weeks.",
+                expected_routes=["repairs_maintenance"],
+                forbidden_routes=["healthy_homes"],
+                description="healthy_homes negative - broken hot water is repairs, not healthy homes",
             ),
         ]
 

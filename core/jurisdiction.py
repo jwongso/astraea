@@ -79,6 +79,21 @@ class SmokeFixture:
     min_sources: int = 0            # if > 0, assert at least this many case sources returned
 
 
+@dataclass
+class RouteFixture:
+    """A pure routing test - no Qdrant, no HTTP, no LLM.
+
+    Tests that build_route_decision() fires or suppresses specific routes.
+    One positive + one negative per route catches keyword collision regressions
+    before they reach users.
+    """
+    question: str
+    expected_routes: list[str] = field(default_factory=list)   # MUST fire
+    forbidden_routes: list[str] = field(default_factory=list)  # MUST NOT fire
+    description: str = ""
+    rewritten: str = ""  # if empty, question is used as both original and rewritten
+
+
 class JurisdictionBase(ABC):
     """Base class for a legal RAG jurisdiction.
 
@@ -180,6 +195,15 @@ class JurisdictionBase(ABC):
     @property
     def smoke_fixtures(self) -> list[SmokeFixture]:
         """Tier 1 retrieval smoke test fixtures. Core test suite runs these automatically."""
+        return []
+
+    @property
+    def route_fixtures(self) -> list[RouteFixture]:
+        """Pure routing test fixtures - no Qdrant, no HTTP.
+
+        One positive + one negative per route. The test runner calls
+        build_route_decision() directly and asserts expected/forbidden intents.
+        """
         return []
 
     def extract_section(self, act_id: str, section: str, full_text: str) -> str | None:
