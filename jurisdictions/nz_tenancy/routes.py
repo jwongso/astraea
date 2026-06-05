@@ -358,4 +358,13 @@ LOW_PRIORITY_SECTIONS: dict[str, tuple[str, ...]] = {
         "agent if landlord", "21 consecutive days",
         "out of new zealand", "overseas landlord",
     ),
+    # s55AA: termination by notice for physical assault by tenant.
+    # CE scores ~0.58 on relationship-breakdown and repeated-breach questions
+    # because "termination" semantics overlap. Suppress unless the question
+    # actually involves violence or physical harm.
+    "NZLEG/RTA/s55AA": (
+        "assault", "physical assault", "attacked", "attack",
+        "violence", "violent", "threatened", "threat",
+        "hit", "punched", "kicked", "hurt", "injured", "harm",
+    ),
 }
