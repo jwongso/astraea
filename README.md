@@ -406,8 +406,10 @@ Required fields: `document_id`, `court`, `court_name`, `title`, `date`, `url`, `
 
 | App | URL | Source |
 |---|---|---|
-| NZ Tenancy Help | https://tenancy.localrun.ai | https://github.com/jwongso/nz-legal-rag |
+| NZ Tenancy Help | https://tenancy.localrun.ai | this repo (`jurisdictions/nz_tenancy/`) |
+| NZ Legal Research | https://nz-legal-rag.localrun.ai | this repo (`jurisdictions/nz_legal/`) |
 | NZ Building Consents Help | https://buildingconsents.localrun.ai | https://github.com/jwongso/buildingconsents |
+| Corpus ingestion scripts | - | https://github.com/jwongso/nz-legal-rag (archived) |
 
 ---
 
