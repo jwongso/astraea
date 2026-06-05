@@ -32,7 +32,7 @@ from pydantic import BaseModel
 
 from core.anchor import _augment_case_retrieval, _refine_retrieve, _retrieve_anchor
 from core.browser import BrowserSession
-from core.feedback import write_feedback, write_feedback_debug, write_feedback_full
+from core.feedback import write_feedback, write_feedback_debug, write_feedback_full, write_route_debug
 from core.jurisdiction import JurisdictionBase
 from core.legislation import LegislationCache
 from core.pipeline import RAGPipeline
@@ -407,7 +407,9 @@ def create_app(
                 if debug_mode:
                     yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
 
-                if debug_mode or req.feedback_context:
+                _no_log = request.headers.get("X-No-Log")
+                _wants_route_log = jur.log_route_decisions and not _no_log
+                if debug_mode or req.feedback_context or _wants_route_log:
                     def _tok(text: str) -> int:
                         return max(1, round(len(text) / 4))
 
@@ -429,6 +431,11 @@ def create_app(
                             for intent, terms in decision.near_miss_routes
                         ],
                     }
+                    if _wants_route_log:
+                        try:
+                            write_route_debug(question, retrieval_question, routing_ev)
+                        except Exception:
+                            pass
                     anchor_sections = [
                         {
                             "document_id": s.get("case_id", ""),

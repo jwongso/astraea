@@ -198,6 +198,16 @@ class JurisdictionBase(ABC):
         return []
 
     @property
+    def log_route_decisions(self) -> bool:
+        """Write routing decision to data/route_debug.jsonl for every real question.
+
+        Set True while the route table is being tuned. Disable once the
+        jurisdiction is stable to avoid accumulating unnecessary log data.
+        Requests with X-No-Log: 1 are always skipped.
+        """
+        return False
+
+    @property
     def route_fixtures(self) -> list[RouteFixture]:
         """Pure routing test fixtures - no Qdrant, no HTTP.
 

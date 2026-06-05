@@ -17,8 +17,10 @@ from core.queue import get_client_ip
 _FEEDBACK_LOG = Path("data/feedback.jsonl")
 _FEEDBACK_FULL_LOG = Path("data/feedback_full.jsonl")
 _FEEDBACK_DEBUG_LOG = Path("data/feedback_debug.jsonl")
+_ROUTE_DEBUG_LOG = Path("data/route_debug.jsonl")
 _FEEDBACK_MAX_BYTES = 20 * 1024 * 1024       # 20 MB per file before rotation
 _FEEDBACK_FULL_MAX_BYTES = 50 * 1024 * 1024  # 50 MB per file before rotation
+_ROUTE_DEBUG_MAX_BYTES = 50 * 1024 * 1024
 _FEEDBACK_ROTATE_KEEP = 5
 _FEEDBACK_COOLDOWN_S = 30
 
@@ -71,4 +73,23 @@ def write_feedback_debug(request: Request, entry: dict) -> None:
     _FEEDBACK_DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
     _rotate_log(_FEEDBACK_DEBUG_LOG, _FEEDBACK_FULL_MAX_BYTES)
     with _FEEDBACK_DEBUG_LOG.open("a") as f:
+        f.write(json.dumps(entry) + "\n")
+
+
+def write_route_debug(question: str, rewritten: str, routing_ev: dict) -> None:
+    """Log routing decision for every real incoming question.
+
+    Writes to data/route_debug.jsonl. Disabled by X-No-Log header at the
+    call site. Turn off per-jurisdiction with log_route_decisions=False once
+    the route table is stable.
+    """
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "q": question[:2000],
+        "rewritten": rewritten[:2000] if rewritten != question else "",
+        **routing_ev,
+    }
+    _ROUTE_DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
+    _rotate_log(_ROUTE_DEBUG_LOG, _ROUTE_DEBUG_MAX_BYTES)
+    with _ROUTE_DEBUG_LOG.open("a") as f:
         f.write(json.dumps(entry) + "\n")

@@ -82,6 +82,10 @@ class NZTenancyJurisdiction(JurisdictionBase):
         )
 
     @property
+    def log_route_decisions(self) -> bool:
+        return True
+
+    @property
     def max_question_chars(self) -> int:
         return 1200
 
