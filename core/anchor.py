@@ -11,7 +11,7 @@ from core.routing import allow_section, build_route_decision, normalize_query
 
 _ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
 
-# Module-level cross-encoder reranker (log-only in Phase 1).
+# Cross-encoder relevance gate for legislation retrieval.
 # Loaded lazily at first scored query; None when ENABLE_RERANKER=false.
 _reranker = None
 
@@ -27,7 +27,7 @@ def _get_reranker():
         return None
     if _reranker is None:
         from core.reranker import CrossEncoderReranker
-        _reranker = CrossEncoderReranker(log_only=True)
+        _reranker = CrossEncoderReranker()
     return _reranker
 
 
@@ -63,18 +63,21 @@ async def _retrieve_anchor(
     pipeline: RAGPipeline,
     leg_store: VectorStore,
     jurisdiction: JurisdictionBase,
-) -> tuple[str, list[dict]]:
+) -> tuple[str, list[dict], list[dict]]:
     """Retrieve legislation sections as anchor context.
 
     Uses federated per-Act search when the jurisdiction registers leg_sources,
     otherwise falls back to a single global legislation search. Route-forced
     sections are always included as hard floor guarantees regardless of scores.
 
-    Returns (anchor_text_from_vstore, leg_sources).
+    Returns (anchor_text_from_vstore, leg_sources, ce_gate_log).
+    ce_gate_log contains one entry per candidate: case_id, ce_score, forced, kept.
+    Empty list when ENABLE_RERANKER=false.
     """
     if leg_store is None:
-        return "", []
+        return "", [], []
     try:
+        _ce_log: list[dict] = []
         # Build route decision before embedding - keyword matching, no network call
         decision = build_route_decision(
             original_question or question, question, jurisdiction.routes
@@ -140,6 +143,24 @@ async def _retrieve_anchor(
         # collection leaking into leg_sources (e.g. nz_legal has both).
         raw = [h for h in raw if _is_leg_chunk(h.case_id)]
 
+        # Cross-encoder relevance gate: drop sections that are semantically
+        # irrelevant to the query. Runs after structural filters to minimise the
+        # candidate set the CE model sees. Route-forced sections always pass.
+        reranker = _get_reranker()
+        if reranker is not None:
+            try:
+                raw, _ce_log = await asyncio.to_thread(
+                    reranker.score_and_filter,
+                    question,
+                    raw,
+                    jurisdiction.leg_ce_min_score,
+                    set(injected_ids),
+                )
+                if _ce_log:
+                    logging.getLogger(__name__).debug("ce_gate %s", _ce_log)
+            except Exception as exc:
+                logging.getLogger(__name__).warning("ce_gate error: %s", exc)
+
         seen: set[str] = set()
         hits = []
         max_hits = max(3, len(injected_ids)) if injected_ids else 2
@@ -153,25 +174,6 @@ async def _retrieve_anchor(
         if not hits:
             return "", []
 
-        # Phase 1 - log cross-encoder scores for observability without affecting ranking.
-        # Compare these logs against route-based order to decide if/when to promote CE to ranking.
-        reranker = _get_reranker()
-        if reranker is not None:
-            try:
-                scored = await asyncio.to_thread(reranker.score, question, hits)
-                ce_log = [
-                    {"case_id": h.case_id, "ce_score": round(float(s), 4), "route_rank": i}
-                    for i, (h, s) in enumerate(scored)
-                ]
-                if ce_log:
-                    logging.getLogger(__name__).debug(
-                        "reranker_log federated=%s %s",
-                        bool(leg_srcs),
-                        ce_log,
-                    )
-            except Exception as exc:
-                logging.getLogger(__name__).warning("reranker score failed: %s", exc)
-
         lines = [
             "Relevant Act sections "
             "(legislative context - use for grounding section numbers only, "
@@ -184,9 +186,9 @@ async def _retrieve_anchor(
             {"case_id": h.case_id, "title": h.title, "url": h.url}
             for h in hits
         ]
-        return "\n".join(lines), leg_sources_out
+        return "\n".join(lines), leg_sources_out, _ce_log
     except Exception:
-        return "", []
+        return "", [], []
 
 
 async def _augment_case_retrieval(

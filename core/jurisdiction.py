@@ -198,6 +198,23 @@ class JurisdictionBase(ABC):
         return []
 
     @property
+    def leg_ce_min_score(self) -> float:
+        """Minimum cross-encoder score for a legislation section to reach LLM context.
+
+        Sections scoring below this threshold are dropped after retrieval.
+        Route-forced sections always pass regardless of score.
+
+        Scores from BAAI/bge-reranker-v2-m3 are sigmoid-normalised [0, 1]:
+          - Clearly relevant:   > 0.5
+          - Borderline:         0.15 - 0.5
+          - Clearly irrelevant: < 0.15
+
+        Lower this if legitimate sections are being dropped. Raise it to tighten
+        precision on jurisdictions with broad legislation corpora.
+        """
+        return 0.15
+
+    @property
     def log_route_decisions(self) -> bool:
         """Write routing decision to data/route_debug.jsonl for every real question.
 

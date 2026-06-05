@@ -329,6 +329,10 @@ ROUTES: list[StatuteRoute] = [
 ]
 
 LOW_PRIORITY_SECTIONS: dict[str, tuple[str, ...]] = {
+    # Structural suppression: s16A is almost never relevant. Overseas landlord
+    # queries are rare and have distinctive vocabulary, so keyword gate is reliable.
+    # Word-sense false positives (e.g. "security camera" pulling bond sections) are
+    # handled by the cross-encoder gate in anchor.py, not here.
     "NZLEG/RTA/s16A": (
         "landlord overseas", "landlord out of new zealand",
         "agent if landlord", "21 consecutive days",

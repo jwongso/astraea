@@ -155,6 +155,12 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 description="healthy_homes route - HHS2019 heating and insulation requirements surface alongside RTA s138B",
             ),
             SmokeFixture(
+                question="Am I allowed a security camera while staying in a rental?",
+                expected_sections=[],
+                forbidden_sections=["NZLEG/RTA/s18", "NZLEG/RTA/s18A", "NZLEG/RTA/s18B"],
+                description="low_priority suppression - security camera must not surface bond sections (s18*)",
+            ),
+            SmokeFixture(
                 question="I am on a fixed-term tenancy for a year and my partner has been offered a job with free housing. Can I leave the tenancy early?",
                 expected_sections=["NZLEG/RTA/s50", "NZLEG/RTA/s66"],
                 description="tenant_early_exit route - tenant wants to leave fixed-term early, mutual termination and assignment",

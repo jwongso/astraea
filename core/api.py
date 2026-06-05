@@ -346,7 +346,7 @@ def create_app(
                     else await _rewrite_query(rewrite_input, rewrite_system)
                 )
 
-                (context_texts, sources), (anchor_vstore, leg_sources) = await asyncio.gather(
+                (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log) = await asyncio.gather(
                     pipeline.retrieve(retrieval_question, **retrieve_kwargs),
                     _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
                 )
@@ -430,6 +430,7 @@ def create_app(
                             {"route": intent, "broad_matched": list(terms)}
                             for intent, terms in decision.near_miss_routes
                         ],
+                        "ce_gate": ce_gate_log,
                     }
                     anchor_sections = [
                         {
@@ -543,7 +544,7 @@ def create_app(
             else await _rewrite_query(rewrite_input, rewrite_system)
         )
 
-        (context_texts, sources), (anchor_vstore, leg_sources) = await asyncio.gather(
+        (context_texts, sources), (anchor_vstore, leg_sources, _ce_gate_log) = await asyncio.gather(
             pipeline.retrieve(retrieval_question, top_k=5, strategy=strategy, min_score=0.75, min_chunks=2),
             _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
         )
