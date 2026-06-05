@@ -59,6 +59,7 @@ class RouteDecision:
     triggered: bool
     matched_intents: tuple[str, ...]           # intents of matched routes, for debug/logging
     trigger_terms: tuple[str, ...]             # terms that actually matched in the query
+    trigger_paths: tuple[tuple[str, str], ...] # ((intent, "precise"|"broad+context"|"legacy"), ...) per matched route
     forced_sections: tuple[str, ...]           # union of all forced sections, order preserved
     leg_allow_list: tuple[str, ...]            # dominant allow-list (highest-priority route that defines one)
     boosted_act_ids: frozenset[str]            # act IDs derived from forced_sections, for federated search
@@ -67,6 +68,7 @@ class RouteDecision:
     dominant_route: str                        # intent of route that owns leg_allow_list; "" if none
     dominance_reason: str                      # human-readable explanation for debug output
     ignored_routes: tuple[tuple[str, str], ...] # ((intent, reason), ...) for debug output
+    near_miss_routes: tuple[tuple[str, tuple[str, ...]], ...] # ((intent, (broad_terms_matched, ...)), ...) - broad fired, context gate failed
 
 
 def normalize_query(text: str) -> str:
@@ -147,8 +149,37 @@ def build_route_decision(
     leg_synths = list(dict.fromkeys(r.synthetic_query for r in matched if r.synthetic_query))
     case_synths = list(dict.fromkeys(r.case_synthetic_query for r in matched if r.case_synthetic_query))
 
-    # Trigger terms: only the terms that actually appeared in the query
-    trigger_terms = sorted({t for r in matched for t in r.include_any if t in q})
+    # Trigger terms: only the terms that actually appeared in the query.
+    # Two-tier routes have include_any=() so must collect from the right fields.
+    trigger_term_set: set[str] = set()
+    trigger_paths_list: list[tuple[str, str]] = []
+    for r in matched:
+        if r.include_any_precise or r.include_any_broad:
+            if any(t in q for t in r.include_any_precise):
+                path = "precise"
+                trigger_term_set.update(t for t in r.include_any_precise if t in q)
+            else:
+                path = "broad+context"
+                trigger_term_set.update(t for t in r.include_any_broad if t in q)
+                trigger_term_set.update(t for t in r.require_context_any if t in q)
+        else:
+            path = "legacy"
+            trigger_term_set.update(t for t in r.include_any if t in q)
+        trigger_paths_list.append((r.intent, path))
+    trigger_terms = sorted(trigger_term_set)
+
+    # Near-miss routes: broad terms matched but context gate failed.
+    # Most useful signal for tuning - tells you a route "almost" fired.
+    near_misses: list[tuple[str, tuple[str, ...]]] = []
+    for route in routes:
+        if route.intent in set(r.intent for r in matched):
+            continue
+        if route.exclude_any and any(t in q for t in route.exclude_any):
+            continue
+        if route.include_any_broad and any(t in q for t in route.include_any_broad):
+            if not any(t in q for t in route.require_context_any):
+                broad_matched = tuple(t for t in route.include_any_broad if t in q)
+                near_misses.append((route.intent, broad_matched))
 
     # Dominance audit fields
     dominant_route = ""
@@ -185,6 +216,7 @@ def build_route_decision(
         triggered=bool(matched),
         matched_intents=tuple(r.intent for r in matched),
         trigger_terms=tuple(trigger_terms),
+        trigger_paths=tuple(trigger_paths_list),
         forced_sections=tuple(forced),
         leg_allow_list=leg_allow_list,
         boosted_act_ids=frozenset(boosted),
@@ -193,6 +225,7 @@ def build_route_decision(
         dominant_route=dominant_route,
         dominance_reason=dominance_reason,
         ignored_routes=tuple(ignored),
+        near_miss_routes=tuple(near_misses),
     )
 
 

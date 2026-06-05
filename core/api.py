@@ -416,12 +416,17 @@ def create_app(
                         "triggered": decision.triggered,
                         "matched_routes": list(decision.matched_intents),
                         "trigger_terms": list(decision.trigger_terms),
+                        "trigger_paths": {intent: path for intent, path in decision.trigger_paths},
                         "forced_sections": list(decision.forced_sections),
                         "dominant_route": decision.dominant_route,
                         "dominance_reason": decision.dominance_reason,
                         "ignored_routes": [
                             {"route": r, "reason": reason}
                             for r, reason in decision.ignored_routes
+                        ],
+                        "near_miss_routes": [
+                            {"route": intent, "broad_matched": list(terms)}
+                            for intent, terms in decision.near_miss_routes
                         ],
                     }
                     anchor_sections = [
