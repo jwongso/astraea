@@ -450,6 +450,68 @@ LLM              Generates the answer.                 Easily distracted by irre
                  Most expensive per token.             you a section is wrong - it uses it.
 ```
 
+### Plain-language analogies
+
+**Embedder - the librarian who sorts books by topic**
+
+Imagine a librarian who reads every book in the library once and puts a label on the
+spine: a number that represents what the book is about. Books about "dogs" get labels
+close to books about "cats". Books about "security guards" happen to get labels close
+to books about "security deposits" because both use the word "security" a lot.
+
+The embedder works the same way. It reads a piece of text once and produces a number
+(a vector). It never compares two texts against each other - it just labels each one.
+
+**Qdrant - the warehouse that finds the nearest labels**
+
+Qdrant is the warehouse storing all those spine labels. When you ask a question, the
+embedder labels your question too. Qdrant then finds the books whose labels are
+numerically closest to your question's label. Very fast - millions of books in
+milliseconds.
+
+The problem: "Am I allowed a security camera?" and "Bond lodgement - landlord must
+provide security deposit receipt" both have the word "security". Their labels end up
+close. Qdrant dutifully returns the bond section as a candidate. It did its job
+correctly - but it has no way to know the two "security" words mean completely different
+things.
+
+**Cross-encoder - the expert who reads both at once**
+
+The cross-encoder is the expert you bring in for a second opinion. You hand them both
+texts - the question AND the candidate passage - and they read both together. They can
+see that "security camera" in the question is about CCTV surveillance, and "security
+deposit" in the passage is about bond money. The answer: not relevant. Score: 0.03.
+
+They can also see that "Am I allowed a security camera?" and "Tenant's responsibilities
+regarding fixtures and alterations" ARE related - a camera requires drilling, which is
+a fixture change. Score: 0.81. Keep it.
+
+The cost: they can only read a small pile of candidates. You cannot ask them to read
+all million books - it would take hours. This is why you use Qdrant first (fast,
+finds the pile) and the cross-encoder second (slow, filters the pile).
+
+**LLM - the lawyer who writes the answer**
+
+The LLM is the lawyer who reads the pile the expert approved and writes the actual
+answer. They are good at reasoning, citing sections, and giving practical advice.
+
+But here is the trap: if you hand them a pile that still contains the bond section,
+they will try to work it into the answer. They might say "while the RTA also sets out
+bond lodgement obligations under s18A...". They are not hallucinating - they are
+faithfully using the context you gave them. The garbage was in your input.
+
+The rule: never ask the LLM to filter. Filter before it sees anything.
+
+**The full analogy in one paragraph**
+
+A user asks about a security camera. The librarian (embedder) labels the question.
+The warehouse (Qdrant) finds the ten closest books - mostly about tenant obligations
+and fixtures, but accidentally also the bond book because "security" matched. The
+expert (cross-encoder) reads each book against the question and scores them: fixtures
+0.81, tenant responsibilities 0.68, bond 0.03. The librarian's assistant drops anything
+below 0.15. The lawyer (LLM) gets a clean pile of three books and writes a precise
+answer about fixtures and CCTV installation rights. Nobody mentions bonds.
+
 ### Why two encoders?
 
 The embedder (bi-encoder) encodes query and passage **independently** and then
