@@ -34,8 +34,11 @@ _DEFAULT_MODEL = "nomic-ai/nomic-embed-text-v1.5"
 def _select_device(min_vram_mb: int = 512) -> str:
     if not torch.cuda.is_available():
         return "cpu"
-    free_bytes, _ = torch.cuda.mem_get_info()
-    return "cuda" if free_bytes >= min_vram_mb * 1024 * 1024 else "cpu"
+    try:
+        free_bytes, _ = torch.cuda.mem_get_info()
+        return "cuda" if free_bytes >= min_vram_mb * 1024 * 1024 else "cpu"
+    except Exception:
+        return "cpu"
 
 
 class Embedder:
