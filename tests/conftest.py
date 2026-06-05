@@ -1,9 +1,23 @@
 """Root conftest - shared fixtures and CLI options for all Astraea tests."""
 
 import importlib
+from pathlib import Path
 
 import httpx
 import pytest
+
+
+def pytest_configure(config):
+    """Inject .training/test_local_fixtures.py into the collection path if present.
+
+    The file is gitignored (local-only training pipeline tests derived from real
+    community questions). Adding it here means a plain 'pytest tests/' run picks
+    it up automatically on machines that have the training data pipeline set up,
+    without any changes needed on fresh clones or CI.
+    """
+    local = Path(".training/test_local_fixtures.py")
+    if local.exists():
+        config.args = list(config.args) + [str(local)]
 
 
 def pytest_addoption(parser):
