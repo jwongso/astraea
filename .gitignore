@@ -35,3 +35,6 @@ models/
 # OS
 .DS_Store
 Thumbs.db
+
+# Training data pipeline - local only, never commit
+.training/
