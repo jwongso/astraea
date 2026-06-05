@@ -76,18 +76,33 @@ def write_feedback_debug(request: Request, entry: dict) -> None:
         f.write(json.dumps(entry) + "\n")
 
 
-def write_route_debug(question: str, rewritten: str, routing_ev: dict) -> None:
-    """Log routing decision for every real incoming question.
+def write_route_debug(
+    question: str,
+    rewritten: str,
+    routing_ev: dict,
+    *,
+    answer: str = "",
+    sources: list | None = None,
+    legislation: list | None = None,
+    strategy: str = "",
+) -> None:
+    """Log full capture for every real incoming question.
 
-    Writes to data/route_debug.jsonl. Disabled by X-No-Log header at the
-    call site. Turn off per-jurisdiction with log_route_decisions=False once
-    the route table is stable.
+    Writes to data/route_debug.jsonl one entry per prompt containing:
+    routing decision, retrieved sources + legislation, and the full answer.
+
+    Disabled by X-No-Log header at the call site. Turn off per-jurisdiction
+    with log_route_decisions=False once the route table is stable.
     """
     entry = {
         "ts": datetime.now(timezone.utc).isoformat(),
         "q": question[:2000],
         "rewritten": rewritten[:2000] if rewritten != question else "",
         **routing_ev,
+        "strategy": strategy,
+        "sources": sources or [],
+        "legislation": legislation or [],
+        "answer": answer[:8000],
     }
     _ROUTE_DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
     _rotate_log(_ROUTE_DEBUG_LOG, _ROUTE_DEBUG_MAX_BYTES)

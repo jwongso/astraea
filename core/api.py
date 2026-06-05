@@ -431,11 +431,6 @@ def create_app(
                             for intent, terms in decision.near_miss_routes
                         ],
                     }
-                    if _wants_route_log:
-                        try:
-                            write_route_debug(question, retrieval_question, routing_ev)
-                        except Exception:
-                            pass
                     anchor_sections = [
                         {
                             "document_id": s.get("case_id", ""),
@@ -497,6 +492,20 @@ def create_app(
                     yield f"data: {json.dumps({'type': 'debug_done', 'generate_ms': round((time.monotonic() - t_gen) * 1000), 'total_ms': round((time.monotonic() - t0) * 1000)})}\n\n"
 
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+                if _wants_route_log:
+                    try:
+                        write_route_debug(
+                            question,
+                            retrieval_question,
+                            routing_ev,
+                            answer="".join(full_answer),
+                            sources=sources,
+                            legislation=leg_sources,
+                            strategy=strategy,
+                        )
+                    except Exception:
+                        pass
 
                 await _save_session(redis, jur.name, req.session_id, question, "".join(full_answer))
 
