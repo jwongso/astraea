@@ -287,6 +287,26 @@ ROUTES: list[StatuteRoute] = [
         notes="Rent increases by notice or order (s28, s28A).",
     ),
     StatuteRoute(
+        intent="fixed_term_rent_review",
+        include_any=(
+            "rent review", "rent increase", "increase the rent", "raise the rent",
+            "review clause", "rent review clause", "rent will increase",
+            "rent going up", "review in", "increase at review",
+        ),
+        include_all=("fixed term",),
+        forced_sections=("NZLEG/RTA/s13A", "NZLEG/RTA/s50"),
+        synthetic_query=(
+            "fixed term tenancy rent review clause agreement contents section 13A "
+            "landlord must specify review method limit mutual termination section 50 "
+            "tenant options fixed term unable to pay increased rent"
+        ),
+        notes=(
+            "Fixed-term tenancy with a rent review clause. "
+            "s13A=agreement must clearly specify review terms (if silent, increase is invalid); "
+            "s50=early exit options if tenant cannot afford the increase."
+        ),
+    ),
+    StatuteRoute(
         intent="tenant_early_exit",
         include_any=(
             "leave early", "leave the tenancy early", "end the tenancy early",

@@ -165,6 +165,11 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 description="low_priority suppression - security camera must not surface bond sections (s18*)",
             ),
             SmokeFixture(
+                question="We have been offered a new fixed term tenancy with a rent review in 6 months. What happens if they increase the rent beyond what we can afford?",
+                expected_sections=["NZLEG/RTA/s13A", "NZLEG/RTA/s28"],
+                description="fixed_term_rent_review - s13A (review clause must be specified) and s28 (notice rules) both in context",
+            ),
+            SmokeFixture(
                 question="I am on a fixed-term tenancy for a year and my partner has been offered a job with free housing. Can I leave the tenancy early?",
                 expected_sections=["NZLEG/RTA/s50", "NZLEG/RTA/s66"],
                 description="tenant_early_exit route - tenant wants to leave fixed-term early, mutual termination and assignment",
@@ -347,6 +352,19 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_routes=["repairs_maintenance"],
                 forbidden_routes=["healthy_homes"],
                 description="healthy_homes negative - broken hot water is repairs, not healthy homes",
+            ),
+            # --- fixed_term_rent_review ---
+            RouteFixture(
+                question="We are on a fixed term tenancy and there is a rent review in 6 months. What can the landlord increase it by?",
+                expected_routes=["fixed_term_rent_review", "rent_increase"],
+                forbidden_routes=["tenant_early_exit"],
+                description="fixed_term_rent_review positive - fixed term + rent review fires both routes",
+            ),
+            RouteFixture(
+                question="My landlord wants to increase my rent by $50 per week. How much notice do they need to give?",
+                expected_routes=["rent_increase"],
+                forbidden_routes=["fixed_term_rent_review"],
+                description="fixed_term_rent_review negative - rent increase with no fixed term must not fire fixed_term_rent_review",
             ),
             # --- two-tier trigger tests for property_change ---
             RouteFixture(
