@@ -172,7 +172,7 @@ async def _retrieve_anchor(
                 break
 
         if not hits:
-            return "", []
+            return "", [], []
 
         lines = [
             "Relevant Act sections "

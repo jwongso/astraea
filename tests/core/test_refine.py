@@ -7,7 +7,9 @@ query deduplication logic used by _refine_retrieve.
 
 import pytest
 
-from core.api import _confidence, _dedupe_queries, _format_session_context, _SESSION_ID_RE
+from core.anchor import _dedupe_queries
+from core.api import _confidence
+from core.session import _format_session_context, _SESSION_ID_RE
 
 
 # ---------------------------------------------------------------------------
