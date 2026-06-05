@@ -82,6 +82,10 @@ class NZTenancyJurisdiction(JurisdictionBase):
         )
 
     @property
+    def leg_ce_min_score(self) -> float:
+        return 0.50
+
+    @property
     def log_route_decisions(self) -> bool:
         return True
 
