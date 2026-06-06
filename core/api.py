@@ -57,6 +57,17 @@ _DEBUG_KEY = os.getenv("DEBUG_KEY", "")
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 _VALID_STRATEGIES = {"vector", "mmr"}
 
+_QUESTION_LOG = Path("data/question_log.jsonl")
+
+
+def _log_question(question: str) -> None:
+    try:
+        _QUESTION_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with _QUESTION_LOG.open("a") as f:
+            f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "q": question}) + "\n")
+    except Exception:
+        pass
+
 _REWRITE_SYSTEM_DEFAULT = (
     "Rewrite the following as a concise formal legal question optimised for retrieving relevant case decisions. "
     "Focus on the underlying legal dispute, facts, and claims (e.g. what damage is alleged, what the landlord or tenant is claiming, what the legal issue is). "
@@ -337,6 +348,9 @@ def create_app(
                     return
 
                 prior_turns = await _load_session(redis, jur.name, req.session_id)
+
+                if not request.headers.get("X-No-Log") and not req.feedback_context:
+                    _log_question(question)
 
                 retrieve_kwargs: dict = {"top_k": 5, "strategy": strategy, "min_score": 0.75, "min_chunks": 2}
 
