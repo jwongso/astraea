@@ -35,6 +35,8 @@ ROUTES: list[StatuteRoute] = [
             "replace the carpet", "replace carpet", "full carpet replacement", "new carpet",
             "breach notice", "breached for", "issued a breach", "breach of tenancy notice",
             "lawn clippings", "lawn maintenance", "lawn mowing", "mowing the lawn",
+            "pin hole", "pin holes", "wallpaper damage", "wallpaper torn", "wall holes",
+            "blu-tack damage", "blue tack damage", "picture holes",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
@@ -190,6 +192,8 @@ ROUTES: list[StatuteRoute] = [
             "shorter term", "12 month fixed term", "minimum fixed term",
             "new agency", "agency changed", "new property manager", "pm changed",
             "changed property manager", "change of agency", "new pm",
+            "pet request", "pet application", "pet approval", "pet request form",
+            "age of pet", "age of the cat", "age of the dog", "discriminate on age",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -271,6 +275,8 @@ ROUTES: list[StatuteRoute] = [
             "inspection standard", "failed inspection", "not up to inspection",
             "insurance inspection", "mortgage valuation", "at owner's request",
             "send someone", "owner's request",
+            "take photos", "photos at inspection", "photograph my", "photos of my",
+            "final inspection", "exit inspection", "move out inspection",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
@@ -578,6 +584,7 @@ ROUTES: list[StatuteRoute] = [
             "pay the water", "liable for water", "responsible for water",
             "water rates", "metered water", "water costs",
             "pay water", "water and waste", "wastewater", "water waste",
+            "gas bottle", "gas bottle rental", "gas bottle fee", "gas bottle cost",
             "s36",
         ),
         forced_sections=("NZLEG/RTA/s36",),
