@@ -18,6 +18,8 @@ ROUTES: list[StatuteRoute] = [
             "carpet damage", "carpet replacement", "carpet clean", "carpet wear",
             "bond deduction", "deducting from", "deduct from bond",
             "withholding my bond", "withheld my bond", "withhold my bond",
+            "insurance excess", "carpet stain", "stain on carpet",
+            "marks on carpet", "paint mark", "paint patch",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
@@ -112,6 +114,10 @@ ROUTES: list[StatuteRoute] = [
             "water tank", "tank dirty", "tank cleaning", "clean the tank",
             "flush", "flushing", "toilet flush", "flush issue",
             "heat pump", "heatpump",
+            "plumbing", "blocked drain", "drain blocked", "drain issue",
+            "tree roots", "roots in pipe", "roots in plumbing",
+            "animal in ceiling", "possum", "something in ceiling",
+            "movement in ceiling", "noise in ceiling", "creature in ceiling",
             "s33",
         ),
         exclude_any=(
@@ -286,6 +292,8 @@ ROUTES: list[StatuteRoute] = [
             "ventilation standard", "extractor fan", "extraction fan",
             "moisture barrier", "ground moisture", "draught stopping",
             "draught standard", "draughts", "no insulation",
+            "how does healthy homes", "how often checked", "healthy homes compliance",
+            "healthy homes certificate", "compliance statement",
             "s138b", "s45b", "s66i",
         ),
         forced_sections=(
@@ -399,6 +407,62 @@ ROUTES: list[StatuteRoute] = [
         ),
         leg_allow_list=("NZLEG/RTA/s45", "NZLEG/RTA/s13A"),
         notes="Carpark/parking dispute - landlord removing agreed facility. s45=landlord obligations, s13A=tenancy agreement contents.",
+    ),
+    StatuteRoute(
+        intent="tribunal_process",
+        include_any=(
+            "tenancy tribunal today", "applying to the tribunal", "apply to the tribunal",
+            "apply to tribunal", "tribunal application", "tribunal process",
+            "how does tribunal work", "how to apply to tribunal",
+            "never done tribunal", "never been to tribunal", "never used tribunal",
+            "file at tribunal", "file a claim", "lodge a claim",
+            "evidence for tribunal", "provide evidence", "evidence at tribunal",
+            "how do i apply", "what do i need for tribunal",
+            "mediation", "hearing date", "tribunal hearing",
+            "s85", "s86",
+        ),
+        forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
+        synthetic_query=(
+            "tenancy tribunal application process how to apply jurisdiction "
+            "section 85 86 evidence mediation hearing residential tenancies act "
+            "tenant landlord dispute claim procedure"
+        ),
+        notes="Tenancy Tribunal application process, evidence, hearings (s85, s86).",
+    ),
+    StatuteRoute(
+        intent="water_charges",
+        include_any=(
+            "water bill", "water bills", "water charges", "water charge",
+            "water usage", "water account", "water meter",
+            "pay the water", "liable for water", "responsible for water",
+            "water rates", "metered water", "water costs",
+            "s36",
+        ),
+        forced_sections=("NZLEG/RTA/s36",),
+        synthetic_query=(
+            "landlord water charges tenant liable metered water supply "
+            "section 36 residential tenancies act water bill payment "
+            "water usage responsibility"
+        ),
+        notes="Water charge liability between landlord and tenant (s36).",
+    ),
+    StatuteRoute(
+        intent="rent_arrears",
+        include_any=(
+            "rent arrears", "arrears", "rent overdue", "overdue rent",
+            "behind on rent", "behind in rent", "owe rent", "owes rent",
+            "14 day notice", "14-day notice", "arrears notice",
+            "notice for arrears", "unpaid rent", "missed rent",
+            "rent not paid", "failed to pay rent",
+            "s55", "s56",
+        ),
+        forced_sections=("NZLEG/RTA/s55", "NZLEG/RTA/s27"),
+        synthetic_query=(
+            "tenant rent arrears unpaid rent landlord 14 day notice "
+            "section 55 termination application tribunal section 27 "
+            "rent payment obligation residential tenancies act"
+        ),
+        notes="Rent arrears, 14-day notice, termination for non-payment (s55, s27).",
     ),
 ]
 
