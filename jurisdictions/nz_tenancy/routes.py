@@ -188,6 +188,8 @@ ROUTES: list[StatuteRoute] = [
             "pet regulations", "pet regulation", "report the landlord", "report landlord",
             "renew our contract", "renew our lease", "renew rental contract",
             "shorter term", "12 month fixed term", "minimum fixed term",
+            "new agency", "agency changed", "new property manager", "pm changed",
+            "changed property manager", "change of agency", "new pm",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -226,6 +228,8 @@ ROUTES: list[StatuteRoute] = [
             "bonds taking", "bond taking", "bond still delayed",
             "holding my bond", "holding the bond", "pm holding bond",
             "how long does a bond", "bond take to be refunded", "bond refund time",
+            "bond rejected", "bond application rejected", "bond stuck",
+            "no receipts", "without receipts", "didn't provide receipts", "no evidence of costs",
             "s18",
         ),
         forced_sections=("NZLEG/RTA/s18",),
@@ -262,6 +266,8 @@ ROUTES: list[StatuteRoute] = [
             "cancelled inspection", "inspection rescheduled", "inspection cancelled",
             "valuer", "valuation", "property valuer", "property valuation",
             "reinspection", "re-inspection", "second inspection", "follow-up inspection",
+            "present at inspection", "be present", "attend inspection",
+            "inspection time", "change inspection time",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
