@@ -20,6 +20,9 @@ ROUTES: list[StatuteRoute] = [
             "withholding my bond", "withheld my bond", "withhold my bond",
             "insurance excess", "carpet stain", "stain on carpet",
             "marks on carpet", "paint mark", "paint patch",
+            "crack", "cracked", "broken mirror",
+            "clean on move out", "how clean for move out", "cleanliness at end",
+            "vacating",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
@@ -46,6 +49,7 @@ ROUTES: list[StatuteRoute] = [
             "picture hook", "picture hooks", "blu-tack", "blu tack", "bluetack",
             "security camera", "surveillance camera", "cctv",
             "doorbell camera", "camera outside", "camera facing",
+            "adhesive", "renter friendly", "renter-friendly",
         ),
         include_any_broad=(
             "plant", "planted", "tree", "trees", "shrub", "hedge",
@@ -120,6 +124,8 @@ ROUTES: list[StatuteRoute] = [
             "movement in ceiling", "noise in ceiling", "creature in ceiling",
             "guttering", "gutter", "gutters", "blocked gutter",
             "drainage", "drain blocked", "puddle at", "water pooling",
+            "bad smell", "horrible smell", "sewage smell", "drain smell",
+            "smell from pipe", "smell from drain", "water pipe", "pipes",
             "s33",
         ),
         exclude_any=(
@@ -215,6 +221,8 @@ ROUTES: list[StatuteRoute] = [
             "open home", "open homes", "viewings", "property viewing",
             "who is living", "who lives in", "who is residing", "occupants",
             "how many people", "who is staying",
+            "prospective tenant", "showing the property", "showing a tenant",
+            "showing my property", "showed my property",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
@@ -266,6 +274,7 @@ ROUTES: list[StatuteRoute] = [
             "periodic tenancy end", "asked to leave",
             "termination notice", "s51", "s56",
             "gave notice", "given notice", "i gave notice",
+            "gave me notice", "given me notice", "received a notice", "received notice",
             "signed a variation", "tenancy variation", "variation agreement",
         ),
         forced_sections=("NZLEG/RTA/s51",),
@@ -440,6 +449,32 @@ ROUTES: list[StatuteRoute] = [
         notes="Family violence exit - tenant can terminate without notice using s55B/s55C.",
     ),
     StatuteRoute(
+        intent="quiet_enjoyment",
+        include_any=(
+            "quiet enjoyment", "peaceful enjoyment", "peaceful possession",
+            "s38",
+            "harass", "harassment", "landlord harassing",
+            "interfere with my belongings", "interfere with my possessions",
+            "interfere with my stuff", "interfering with my",
+            "get rid of my belongings", "get rid of my furniture", "remove my belongings",
+            "forced to remove", "remove my stuff",
+            "noisy neighbour", "noisy neighbor", "noisy neighbours", "noisy neighbors",
+            "violent neighbour", "violent neighbor", "violent neighbours", "violent neighbors",
+            "threatening neighbour", "threatening neighbor",
+            "disruptive neighbour", "disruptive neighbor",
+            "neighbour harassment", "neighbor harassment",
+            "neighbour dispute", "neighbor dispute",
+            "construction noise", "building works next door", "renovation next door",
+        ),
+        forced_sections=("NZLEG/RTA/s38",),
+        synthetic_query=(
+            "landlord obligation quiet enjoyment tenant peaceful possession "
+            "section 38 residential tenancies act interference harassment "
+            "noisy disruptive neighbours landlord must not interfere"
+        ),
+        notes="Quiet enjoyment - landlord must not interfere with tenant's peaceful possession (s38).",
+    ),
+    StatuteRoute(
         intent="tribunal_process",
         include_any=(
             "tenancy tribunal today", "applying to the tribunal", "apply to the tribunal",
@@ -451,6 +486,9 @@ ROUTES: list[StatuteRoute] = [
             "how do i apply", "what do i need for tribunal",
             "mediation", "hearing date", "tribunal hearing",
             "s85", "s86",
+            "court order", "tribunal order", "order from tribunal",
+            "going to court", "court tomorrow", "court today",
+            "in court", "at court", "court hearing", "at the tribunal",
         ),
         forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
         synthetic_query=(
