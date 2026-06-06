@@ -118,6 +118,8 @@ ROUTES: list[StatuteRoute] = [
             "tree roots", "roots in pipe", "roots in plumbing",
             "animal in ceiling", "possum", "something in ceiling",
             "movement in ceiling", "noise in ceiling", "creature in ceiling",
+            "guttering", "gutter", "gutters", "blocked gutter",
+            "drainage", "drain blocked", "puddle at", "water pooling",
             "s33",
         ),
         exclude_any=(
@@ -148,6 +150,8 @@ ROUTES: list[StatuteRoute] = [
             "cats allowed", "dogs allowed", "cat allowed", "dog allowed",
             "allow pets", "allow cats", "allow dogs",
             "pet policy", "pet bond", "no pet",
+            "new pet rules", "suitable for pets", "not suitable for pets",
+            "property is not suitable for pets", "property suitable for pets",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -180,6 +184,8 @@ ROUTES: list[StatuteRoute] = [
             "bond return", "return my bond", "return the bond",
             "bond refund form", "how long does bond", "bond timeframe",
             "when will i get my bond", "when do i get my bond",
+            "bond reduced", "reduce the bond", "bond difference", "difference in bond",
+            "bond amount reduced", "rent reduced bond",
             "s18",
         ),
         forced_sections=("NZLEG/RTA/s18",),
@@ -206,6 +212,9 @@ ROUTES: list[StatuteRoute] = [
             "was in my home", "was in my house", "was in my flat",
             "uninvited", "is she allowed to do this", "is he allowed to do this",
             "allowed to enter", "allowed to come in",
+            "open home", "open homes", "viewings", "property viewing",
+            "who is living", "who lives in", "who is residing", "occupants",
+            "how many people", "who is staying",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
@@ -256,6 +265,8 @@ ROUTES: list[StatuteRoute] = [
             "21 day notice", "21 days notice",
             "periodic tenancy end", "asked to leave",
             "termination notice", "s51", "s56",
+            "gave notice", "given notice", "i gave notice",
+            "signed a variation", "tenancy variation", "variation agreement",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -274,6 +285,8 @@ ROUTES: list[StatuteRoute] = [
             "list the property", "list the house", "before listing",
             "vacant possession", "empty before", "vacant before",
             "fixed term end early", "break fixed term",
+            "putting the property up for sale", "putting property up for sale",
+            "putting it up for sale", "going up for sale", "going on the market",
         ),
         forced_sections=("NZLEG/RTA/s60A", "NZLEG/RTA/s50"),
         synthetic_query=(
@@ -407,6 +420,24 @@ ROUTES: list[StatuteRoute] = [
         ),
         leg_allow_list=("NZLEG/RTA/s45", "NZLEG/RTA/s13A"),
         notes="Carpark/parking dispute - landlord removing agreed facility. s45=landlord obligations, s13A=tenancy agreement contents.",
+    ),
+    StatuteRoute(
+        intent="family_violence_exit",
+        include_any=(
+            "protection order", "domestic violence", "family violence",
+            "family harm", "violence order", "dv order",
+            "women's refuge", "womens refuge", "refuge",
+            "feeling unsafe at home", "unsafe in my home",
+            "abusive partner", "abusive relationship",
+            "s55b", "s55c",
+        ),
+        forced_sections=("NZLEG/RTA/s55B", "NZLEG/RTA/s55C"),
+        synthetic_query=(
+            "tenant family violence domestic violence protection order "
+            "terminate tenancy early section 55B 55C residential tenancies act "
+            "victim safety notice without consent co-tenant"
+        ),
+        notes="Family violence exit - tenant can terminate without notice using s55B/s55C.",
     ),
     StatuteRoute(
         intent="tribunal_process",
