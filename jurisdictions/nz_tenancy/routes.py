@@ -152,6 +152,8 @@ ROUTES: list[StatuteRoute] = [
             "electricity disconnected", "power has been disconnected",
             "faulty wiring", "faulty circuit", "electrical fault",
             "fire hazard", "fire risk", "almost caught fire",
+            "bathroom blocked", "bathroom is blocked", "toilet blocked", "sink blocked",
+            "shower blocked", "shower drain", "shower not draining", "bath blocked",
             "s33",
         ),
         exclude_any=(
@@ -194,6 +196,12 @@ ROUTES: list[StatuteRoute] = [
             "changed property manager", "change of agency", "new pm",
             "pet request", "pet application", "pet approval", "pet request form",
             "age of pet", "age of the cat", "age of the dog", "discriminate on age",
+            "have a dog", "have a cat", "have a pet", "want a dog", "want a cat",
+            "want a pet", "keep a dog", "keep a cat", "keep a pet",
+            "get a dog", "get a cat", "get a pet", "push for a pet",
+            "listing photos", "listing pictures", "rental photos", "rental listing photos",
+            "photos of the rental", "different from listing", "photos don't match",
+            "old photos", "outdated photos",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -277,6 +285,11 @@ ROUTES: list[StatuteRoute] = [
             "send someone", "owner's request",
             "take photos", "photos at inspection", "photograph my", "photos of my",
             "final inspection", "exit inspection", "move out inspection",
+            "outgoing inspection", "exist inspection",
+            "keys handed in", "hand in keys", "handing in keys", "keys handed back",
+            "landlord came over", "landlord come over", "landlord showed up",
+            "landlord turned up", "turned up unannounced", "came over tonight",
+            "came over without notice", "showed up without notice",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
@@ -335,6 +348,11 @@ ROUTES: list[StatuteRoute] = [
             "moving out notice", "notice to move out", "notice period",
             "drop keys off", "key return", "return the keys", "hand keys back",
             "extra days rent", "public holiday", "easter monday", "easter friday",
+            "resign lease", "re-sign lease", "resign the lease", "re-sign the lease",
+            "renew the lease", "renew lease", "forced to renew",
+            "go periodic", "go to periodic", "switch to periodic", "convert to periodic",
+            "periodic instead", "periodic after fixed", "stay periodic",
+            "end of fixed term", "fixed term ending", "fixed term expires",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -600,6 +618,7 @@ ROUTES: list[StatuteRoute] = [
         include_any=(
             "rent arrears", "arrears", "rent overdue", "overdue rent",
             "behind on rent", "behind in rent", "owe rent", "owes rent",
+            "rent is behind", "rent behind", "behind with rent", "rent is overdue",
             "14 day notice", "14-day notice", "arrears notice",
             "notice for arrears", "unpaid rent", "missed rent",
             "rent not paid", "failed to pay rent",
