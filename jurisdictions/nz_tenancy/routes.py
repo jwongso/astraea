@@ -268,6 +268,9 @@ ROUTES: list[StatuteRoute] = [
             "reinspection", "re-inspection", "second inspection", "follow-up inspection",
             "present at inspection", "be present", "attend inspection",
             "inspection time", "change inspection time",
+            "inspection standard", "failed inspection", "not up to inspection",
+            "insurance inspection", "mortgage valuation", "at owner's request",
+            "send someone", "owner's request",
         ),
         forced_sections=("NZLEG/RTA/s48",),
         synthetic_query=(
@@ -556,6 +559,8 @@ ROUTES: list[StatuteRoute] = [
             "application to tenancy tribunal", "submitted an application",
             "tribunal address", "tribunal location", "where is the tribunal",
             "summoned to tribunal", "summoned to the tribunal", "tribunal summons",
+            "going to tribunal", "going to the tribunal", "before the tribunal",
+            "hard copies", "evidence submitted", "print out evidence",
         ),
         forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
         synthetic_query=(
