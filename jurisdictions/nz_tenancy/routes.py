@@ -26,6 +26,9 @@ ROUTES: list[StatuteRoute] = [
             "dented", "dent in", "accidental damage", "accident damage",
             "threadbare", "thread bare", "worn out carpet", "worn carpet",
             "garden tools", "tools left", "left tools",
+            "wind damage", "storm damage", "hinge broke", "hinge broken",
+            "before i exit", "before i move out", "before we move out",
+            "meth test", "meth testing", "contamination test", "contamination",
             "s49a", "s49b",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
@@ -165,6 +168,9 @@ ROUTES: list[StatuteRoute] = [
             "pet policy", "pet bond", "no pet",
             "new pet rules", "suitable for pets", "not suitable for pets",
             "property is not suitable for pets", "property suitable for pets",
+            "fish tank", "aquarium", "fish tank permission",
+            "change payment date", "change my payment date", "payment date",
+            "rent payment date",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -288,6 +294,8 @@ ROUTES: list[StatuteRoute] = [
             "give notice", "giving notice", "handing in my notice", "hand in my notice",
             "minimum notice", "how much notice", "how many days notice",
             "moving out notice", "notice to move out", "notice period",
+            "drop keys off", "key return", "return the keys", "hand keys back",
+            "extra days rent", "public holiday", "easter monday", "easter friday",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -408,6 +416,9 @@ ROUTES: list[StatuteRoute] = [
             "leave early", "leave the tenancy early", "end the tenancy early",
             "move out before", "moving out before", "get out of the tenancy",
             "exit the lease", "exit the tenancy", "break the lease",
+            "break lease", "breaking lease", "breaking the lease",
+            "break fixed term lease", "breaking fixed term", "lease break",
+            "lease break fee", "break fee", "break lease costs",
             "job offer", "new job", "job opportunity", "farm job",
             "relocating", "moving city", "moving town", "moving region",
             "partner got a job", "offered a job", "offered housing",
@@ -501,6 +512,8 @@ ROUTES: list[StatuteRoute] = [
             "court order", "tribunal order", "order from tribunal",
             "going to court", "court tomorrow", "court today",
             "in court", "at court", "court hearing", "at the tribunal",
+            "legal battle", "breach of tenancy", "breach of the tenancy",
+            "repeat offender", "negligence",
         ),
         forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
         synthetic_query=(
