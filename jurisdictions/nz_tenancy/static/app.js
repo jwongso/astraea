@@ -1064,3 +1064,4 @@ pollQueue();
 setInterval(pollQueue, 15000);
 Astraea.initDisclaimer('nzth_agreed_v1');
 Astraea.initUserContext('nzth_user_ctx');
+Astraea.initCheatCodes('#question');
