@@ -220,6 +220,99 @@
     } catch (_) {}
   }
 
+  // ---- Cheat codes (bottom-left floating button + panel) ----
+  const _CHEAT_STYLES = `
+.astraea-cheat-btn{position:fixed;bottom:1.25rem;left:1.25rem;width:42px;height:42px;border-radius:50%;border:none;background:#374151;color:#e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:900;transition:background .15s;}
+.astraea-cheat-btn:hover{background:#4b5563;}
+.astraea-cheat-btn.active{background:#7c3aed;}
+.astraea-cheat-panel{position:fixed;bottom:4.8rem;left:1.25rem;width:340px;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:1rem;z-index:901;box-shadow:0 8px 30px rgba(0,0,0,.5);}
+.astraea-cheat-panel.hidden{display:none;}
+.astraea-cheat-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.astraea-cheat-hdr h3{margin:0;font-size:.9rem;color:#f3f4f6;font-weight:600;}
+.astraea-cheat-x{background:none;border:none;color:#9ca3af;cursor:pointer;font-size:1.1rem;line-height:1;padding:0;}
+.astraea-cheat-x:hover{color:#e5e7eb;}
+.astraea-cheat-hint{font-size:.75rem;color:#9ca3af;margin:0 0 .75rem;line-height:1.4;}
+.astraea-cheat-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;}
+.astraea-cheat-item{border-radius:6px;cursor:pointer;padding:.45rem .6rem;transition:background .1s;}
+.astraea-cheat-item:hover{background:#374151;}
+.astraea-cheat-row{display:flex;align-items:baseline;gap:.6rem;}
+.astraea-cheat-cmd{font-family:monospace;font-size:.8rem;color:#a78bfa;font-weight:700;flex-shrink:0;min-width:80px;}
+.astraea-cheat-desc{font-size:.78rem;color:#d1d5db;line-height:1.3;}
+.astraea-cheat-eg{font-size:.72rem;color:#6b7280;font-style:italic;margin-top:.25rem;padding-left:0;display:none;line-height:1.4;}
+.astraea-cheat-item:hover .astraea-cheat-eg{display:block;}
+`;
+
+  const _CHEAT_CODES = [
+    { cmd: '/eli5',      desc: 'Simple plain English, no legal jargon',           eg: '/eli5 Can my landlord keep my bond?' },
+    { cmd: '/pitfalls',  desc: 'Common mistakes and risks to avoid',               eg: '/pitfalls I want to end my fixed-term tenancy early' },
+    { cmd: '/checklist', desc: 'Step-by-step action list',                         eg: '/checklist My landlord won\'t fix the mould' },
+    { cmd: '/landlord',  desc: 'Answer from the landlord\'s perspective',          eg: '/landlord My tenant hasn\'t paid rent in 3 weeks' },
+    { cmd: '/guardrail', desc: 'Extra caveats and legal uncertainty flags',        eg: '/guardrail Can I withhold rent for repairs?' },
+    { cmd: '/eval-self', desc: 'Answer then self-evaluate confidence and gaps',    eg: '/eval-self Am I entitled to compensation for flooding?' },
+    { cmd: '/case',      desc: 'Focus on Tribunal decisions and outcomes',         eg: '/case Bond deductions for fair wear and tear' },
+    { cmd: '/search',    desc: 'Find cases without generating an answer',          eg: '/search hardship fixed term house purchase foreseeable' },
+  ];
+
+  function initCheatCodes(inputSelector) {
+    if (!document.getElementById('astraea-cheat-styles')) {
+      const s = document.createElement('style');
+      s.id = 'astraea-cheat-styles';
+      s.textContent = _CHEAT_STYLES;
+      document.head.appendChild(s);
+    }
+
+    const btn = document.createElement('button');
+    btn.className = 'astraea-cheat-btn';
+    btn.title = 'Cheat codes';
+    btn.setAttribute('aria-label', 'Show cheat codes');
+    // lightning bolt icon
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+
+    const itemsHtml = _CHEAT_CODES.map(c =>
+      `<li class="astraea-cheat-item" data-cmd="${escapeHtml(c.cmd)}">
+        <div class="astraea-cheat-row">
+          <span class="astraea-cheat-cmd">${escapeHtml(c.cmd)}</span>
+          <span class="astraea-cheat-desc">${escapeHtml(c.desc)}</span>
+        </div>
+        <div class="astraea-cheat-eg">e.g. ${escapeHtml(c.eg)}</div>
+      </li>`
+    ).join('');
+
+    const panel = document.createElement('div');
+    panel.className = 'astraea-cheat-panel hidden';
+    panel.innerHTML =
+      '<div class="astraea-cheat-hdr"><h3>&#9889; Cheat codes</h3><button class="astraea-cheat-x" aria-label="Close">&times;</button></div>'
+      + '<p class="astraea-cheat-hint">Click to insert into your question. Hover to see an example.</p>'
+      + `<ul class="astraea-cheat-list">${itemsHtml}</ul>`;
+
+    document.body.appendChild(btn);
+    document.body.appendChild(panel);
+
+    const input = inputSelector ? document.querySelector(inputSelector) : null;
+
+    btn.addEventListener('click', (e) => { e.stopPropagation(); panel.classList.toggle('hidden'); });
+    panel.querySelector('.astraea-cheat-x').addEventListener('click', () => panel.classList.add('hidden'));
+
+    panel.querySelectorAll('.astraea-cheat-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const cmd = item.dataset.cmd + ' ';
+        if (input) {
+          // replace existing leading command if present, otherwise prepend
+          const current = input.value.replace(/^\/\w+\s*/, '');
+          input.value = cmd + current;
+          input.focus();
+          // move cursor to end
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+        panel.classList.add('hidden');
+      });
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== btn) panel.classList.add('hidden');
+    });
+  }
+
   // ---- User context (localStorage, injected into every request) ----
   const _CTX_STYLES = `
 .astraea-ctx-btn{position:fixed;bottom:1.25rem;right:1.25rem;width:42px;height:42px;border-radius:50%;border:none;background:#374151;color:#e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:900;transition:background .15s;}
@@ -331,6 +424,7 @@
     initDisclaimer,
     initUserContext,
     getUserContext,
+    initCheatCodes,
   };
 
 })(window);
