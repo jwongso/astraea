@@ -10,7 +10,7 @@ _MAX_BODY_BYTES = 20_480  # 20 KB
 
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' https://static.cloudflareinsights.com; "
+    "script-src 'self' https://static.cloudflareinsights.com 'sha256-v417qeH2S/efozmztGGo4VgxYIM0rH/TDoFRRfP/nPg='; "
     "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
     "connect-src 'self' https://cloudflareinsights.com; "
