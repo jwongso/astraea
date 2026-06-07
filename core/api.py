@@ -349,7 +349,7 @@ def create_app(
 
                 prior_turns = await _load_session(redis, jur.name, req.session_id)
 
-                if not request.headers.get("X-No-Log") and not req.feedback_context:
+                if not request.headers.get("X-No-Log"):
                     _log_question(question)
 
                 retrieve_kwargs: dict = {"top_k": 5, "strategy": strategy, "min_score": 0.75, "min_chunks": 2}
