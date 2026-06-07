@@ -223,7 +223,7 @@
   // ---- Cheat codes (bottom-left floating button + panel) ----
   const _CHEAT_STYLES = `
 .astraea-cheat-btn{position:fixed;bottom:1.25rem;left:1.25rem;width:42px;height:42px;border-radius:50%;border:none;background:#374151;color:#e5e7eb;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.35);z-index:900;transition:background .15s;}
-.astraea-cheat-btn:hover{background:#4b5563;}
+.astraea-cheat-btn:hover{background:#4b5563;box-shadow:0 2px 14px rgba(250,204,21,.45);}
 .astraea-cheat-btn.active{background:#7c3aed;}
 .astraea-cheat-panel{position:fixed;bottom:4.8rem;left:1.25rem;width:340px;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:1rem;z-index:901;box-shadow:0 8px 30px rgba(0,0,0,.5);}
 .astraea-cheat-panel.hidden{display:none;}
