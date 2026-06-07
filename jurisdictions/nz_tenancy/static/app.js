@@ -556,12 +556,21 @@ function showLoading() {
   }, 5000);
 }
 
-function showStreamingResult() {
+function showStreamingResult(activeMode) {
   clearInterval(loadingInterval);
   loadingCard.classList.remove('visible');
   errorCard.classList.remove('visible');
   resultCard.classList.add('visible');
   askAnotherRow.classList.add('visible');
+  const prev = document.getElementById('mode-badge');
+  if (prev) prev.remove();
+  if (activeMode) {
+    const badge = document.createElement('div');
+    badge.id = 'mode-badge';
+    badge.className = 'mode-badge';
+    badge.textContent = '/' + activeMode;
+    resultCard.insertBefore(badge, resultCard.firstChild);
+  }
   resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -589,6 +598,8 @@ function resetToForm() {
   errorCard.classList.remove('visible');
   sourcesSection.classList.remove('visible');
   askAnotherRow.classList.remove('visible');
+  const mb = document.getElementById('mode-badge');
+  if (mb) mb.remove();
   const cb = document.getElementById('confidence-badge');
   if (cb) cb.remove();
   const vp = document.getElementById('verification-panel');
@@ -924,7 +935,17 @@ async function _submitCompare(question, strategies) {
 // ---- Form submit (SSE streaming) ----
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const question = questionEl.value.trim();
+  const raw = questionEl.value.trim();
+  if (!raw) { questionEl.focus(); return; }
+
+  // Strip leading cheat-code command; send clean question + mode separately
+  let mode = '';
+  let question = raw;
+  const cmdMatch = raw.match(/^\/(\w[\w-]*)\s*/);
+  if (cmdMatch) {
+    mode = cmdMatch[1];
+    question = raw.slice(cmdMatch[0].length).trim();
+  }
   if (!question) { questionEl.focus(); return; }
   currentQuestion = question;
 
@@ -958,6 +979,7 @@ form.addEventListener('submit', async (e) => {
         irac: document.getElementById('irac-toggle').checked,
         feedback_context: true,
         user_context: Astraea.getUserContext('nzth_user_ctx'),
+        mode,
       }),
     });
   } catch (_) {
@@ -1014,7 +1036,7 @@ form.addEventListener('submit', async (e) => {
       } else if (event.type === 'token') {
         if (!streamingStarted) {
           streamingStarted = true;
-          showStreamingResult();
+          showStreamingResult(mode);
           answerBody.textContent = '';
         }
         rawAnswer += event.text;

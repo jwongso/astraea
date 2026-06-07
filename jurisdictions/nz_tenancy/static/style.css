@@ -577,6 +577,21 @@ textarea:focus {
 
 .irac-label input { cursor: pointer; }
 
+/* ---- Cheat code mode badge ---- */
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #a78bfa;
+  background: #1e1035;
+  border: 1px solid #4c1d95;
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin-bottom: 10px;
+}
+
 /* ---- Evidence confidence badge ---- */
 .confidence-badge {
   display: flex;

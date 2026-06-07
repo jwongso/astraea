@@ -57,6 +57,17 @@ _DEBUG_KEY = os.getenv("DEBUG_KEY", "")
 _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 _VALID_STRATEGIES = {"vector", "mmr"}
 
+_MODES: dict[str, str] = {
+    "eli5":      "Answer in simple, plain English. No legal jargon. Explain as if the reader has no legal background.\n\n",
+    "pitfalls":  "Focus your answer on common mistakes, traps, and risks to avoid. Lead with the pitfalls.\n\n",
+    "checklist": "Answer as a numbered step-by-step action checklist. Each step is a concrete action the user can take.\n\n",
+    "landlord":  "Answer from the landlord's perspective. What rights, remedies, and obligations does the landlord have here?\n\n",
+    "guardrail": "Answer the question but add extra legal caveats throughout. Flag areas of uncertainty, note where outcomes vary, and highlight limitations in the evidence.\n\n",
+    "eval-self": "Answer the question, then add a section titled 'Self-evaluation' where you rate your confidence (high/medium/low), identify gaps in the evidence, and note what additional information would improve the answer.\n\n",
+    "case":      "Focus on Tribunal decisions and case outcomes. Cite specific case references and summarise what each Tribunal decided on this point.\n\n",
+    "search":    "Do not generate a full legal answer. Instead, list the most relevant case references from the retrieved sources with a 1-2 sentence summary of what each decided. Format as a numbered list.\n\n",
+}
+
 _QUESTION_LOG = Path("data/question_log.jsonl")
 
 
@@ -153,6 +164,7 @@ class AskRequest(BaseModel):
     address: str | None = None  # optional: geocoded to inject zone context via preprocess_question
     feedback_context: bool = False  # always emit context_debug for feedback capture (no debug_key required)
     user_context: str = ""          # client-local context stored in localStorage, injected into anchor
+    mode: str = ""                  # cheat code mode (eli5, pitfalls, checklist, landlord, guardrail, eval-self, case, search)
 
 
 class RetrieveRequest(BaseModel):
@@ -481,6 +493,14 @@ def create_app(
                     }
                     yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
+                # Apply cheat code mode: prefix only the generation question.
+                # Retrieval already used the clean question above.
+                gen_question = question
+                if req.mode:
+                    mode_prefix = _MODES.get(req.mode.lower().lstrip("/"), "")
+                    if mode_prefix:
+                        gen_question = mode_prefix + question
+
                 # Global LLM semaphore: serialize generation across all app
                 # processes when LLM_GLOBAL_CONCURRENCY > 0. Retrieval above
                 # already ran in parallel; only inference is serialized.
@@ -496,7 +516,7 @@ def create_app(
                 full_answer: list[str] = []
                 try:
                     async for tok in pipeline._generator.generate_stream(
-                        question, context_texts, sources, legislation_anchor=anchor or None
+                        gen_question, context_texts, sources, legislation_anchor=anchor or None
                     ):
                         full_answer.append(tok)
                         yield f"data: {json.dumps({'type': 'token', 'text': tok})}\n\n"
