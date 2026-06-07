@@ -243,14 +243,11 @@
 `;
 
   const _CHEAT_CODES = [
-    { cmd: '/eli5',      desc: 'Simple plain English, no legal jargon',           eg: '/eli5 Can my landlord keep my bond?' },
-    { cmd: '/pitfalls',  desc: 'Common mistakes and risks to avoid',               eg: '/pitfalls I want to end my fixed-term tenancy early' },
+    { cmd: '/search',    desc: 'Find cases without generating an answer',          eg: '/search hardship fixed term house purchase foreseeable' },
+    { cmd: '/case',      desc: 'Focus on Tribunal decisions and outcomes',         eg: '/case Bond deductions for fair wear and tear' },
     { cmd: '/checklist', desc: 'Step-by-step action list',                         eg: '/checklist My landlord won\'t fix the mould' },
     { cmd: '/landlord',  desc: 'Answer from the landlord\'s perspective',          eg: '/landlord My tenant hasn\'t paid rent in 3 weeks' },
-    { cmd: '/guardrail', desc: 'Extra caveats and legal uncertainty flags',        eg: '/guardrail Can I withhold rent for repairs?' },
-    { cmd: '/eval-self', desc: 'Answer then self-evaluate confidence and gaps',    eg: '/eval-self Am I entitled to compensation for flooding?' },
-    { cmd: '/case',      desc: 'Focus on Tribunal decisions and outcomes',         eg: '/case Bond deductions for fair wear and tear' },
-    { cmd: '/search',    desc: 'Find cases without generating an answer',          eg: '/search hardship fixed term house purchase foreseeable' },
+    { cmd: '/pitfalls',  desc: 'Common mistakes and risks to avoid',               eg: '/pitfalls I want to end my fixed-term tenancy early' },
   ];
 
   function initCheatCodes(inputSelector) {

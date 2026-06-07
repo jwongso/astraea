@@ -58,14 +58,11 @@ _ALLOWED_ORIGIN = os.getenv("ALLOWED_ORIGIN", "*")
 _VALID_STRATEGIES = {"vector", "mmr"}
 
 _MODES: dict[str, str] = {
-    "eli5":      "Answer in simple, plain English. No legal jargon. Explain as if the reader has no legal background.\n\n",
-    "pitfalls":  "Focus your answer on common mistakes, traps, and risks to avoid. Lead with the pitfalls.\n\n",
+    "search":    "Do not generate a full legal answer. Instead, list the most relevant case references from the retrieved sources with a 1-2 sentence summary of what each decided. Format as a numbered list.\n\n",
+    "case":      "Focus on Tribunal decisions and case outcomes. Cite specific case references and summarise what each Tribunal decided on this point.\n\n",
     "checklist": "Answer as a numbered step-by-step action checklist. Each step is a concrete action the user can take.\n\n",
     "landlord":  "Answer from the landlord's perspective. What rights, remedies, and obligations does the landlord have here?\n\n",
-    "guardrail": "Answer the question but add extra legal caveats throughout. Flag areas of uncertainty, note where outcomes vary, and highlight limitations in the evidence.\n\n",
-    "eval-self": "Answer the question, then add a section titled 'Self-evaluation' where you rate your confidence (high/medium/low), identify gaps in the evidence, and note what additional information would improve the answer.\n\n",
-    "case":      "Focus on Tribunal decisions and case outcomes. Cite specific case references and summarise what each Tribunal decided on this point.\n\n",
-    "search":    "Do not generate a full legal answer. Instead, list the most relevant case references from the retrieved sources with a 1-2 sentence summary of what each decided. Format as a numbered list.\n\n",
+    "pitfalls":  "Focus your answer on common mistakes, traps, and risks to avoid. Lead with the pitfalls.\n\n",
 }
 
 _QUESTION_LOG = Path("data/question_log.jsonl")
