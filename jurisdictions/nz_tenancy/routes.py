@@ -698,6 +698,7 @@ ROUTES: list[StatuteRoute] = [
             "rent reduction loss of amenity agreed services"
         ),
         leg_allow_list=("NZLEG/RTA/s45", "NZLEG/RTA/s13A"),
+        priority=8,
         notes="Carpark/parking dispute - landlord removing agreed facility. s45=landlord obligations, s13A=tenancy agreement contents.",
     ),
     StatuteRoute(

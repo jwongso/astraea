@@ -18,8 +18,10 @@ class StatuteRoute:
     Optional:
         include_all     - ALL of these must also match
         exclude_any     - if any match, skip this route entirely
-        leg_allow_list  - when set, only these sections are allowed as legislation anchors
-        priority        - highest priority wins when multiple routes define leg_allow_list
+        leg_allow_list  - when set, only these sections are allowed as legislation anchors;
+                          when multiple routes fire, allow-lists are unioned (additive)
+        priority        - controls dominant_route for debug display and synthetic query
+                          ordering; does not control which allow-list wins (they are unioned)
         notes           - human-readable explanation
     """
     intent: str
@@ -61,7 +63,7 @@ class RouteDecision:
     trigger_terms: tuple[str, ...]             # terms that actually matched in the query
     trigger_paths: tuple[tuple[str, str], ...] # ((intent, "precise"|"broad+context"|"legacy"), ...) per matched route
     forced_sections: tuple[str, ...]           # union of all forced sections, order preserved
-    leg_allow_list: tuple[str, ...]            # dominant allow-list (highest-priority route that defines one)
+    leg_allow_list: tuple[str, ...]            # union of all allow-lists from fired routes (order preserved, deduped)
     boosted_act_ids: frozenset[str]            # act IDs derived from forced_sections, for federated search
     leg_synthetic_queries: tuple[str, ...]     # for legislation injection pass in anchor.py
     case_synthetic_queries: tuple[str, ...]    # for supplementary case retrieval in anchor.py
@@ -136,11 +138,16 @@ def build_route_decision(
         if len(parts) >= 2:
             boosted.add(parts[1])
 
-    # Allow-list: highest-priority route that defines one
+    # Allow-list: union of all fired routes that define one (order preserved, deduped).
+    # dominant is still tracked by priority for debug/display only - it no longer
+    # controls which allow-list wins, because leg_allow_list is a filter not a ranking
+    # preference. Multi-issue queries need all matched route sections to be accessible.
     allow_candidates = [r for r in matched if r.leg_allow_list]
     if allow_candidates:
         dominant = max(allow_candidates, key=lambda r: r.priority)
-        leg_allow_list = dominant.leg_allow_list
+        leg_allow_list = tuple(dict.fromkeys(
+            s for r in allow_candidates for s in r.leg_allow_list
+        ))
     else:
         dominant = max(matched, key=lambda r: r.priority) if matched else None
         leg_allow_list = ()
@@ -197,9 +204,9 @@ def build_route_decision(
                     continue
                 why = (
                     f"lower priority ({r.priority} < {dominant.priority}); "
-                    "allow-list not used, forced sections still merged"
+                    "allow-list unioned, forced sections merged"
                     if r.leg_allow_list
-                    else "no allow-list; forced sections still merged"
+                    else "no allow-list; forced sections merged"
                 )
                 ignored.append((r.intent, why))
         else:
