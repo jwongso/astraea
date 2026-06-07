@@ -265,8 +265,7 @@
     btn.className = 'astraea-cheat-btn';
     btn.title = 'Cheat codes';
     btn.setAttribute('aria-label', 'Show cheat codes');
-    // lightning bolt icon
-    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    btn.innerHTML = '<span style="font-size:1.2rem;line-height:1">&#9889;</span>';
 
     const itemsHtml = _CHEAT_CODES.map(c =>
       `<li class="astraea-cheat-item" data-cmd="${escapeHtml(c.cmd)}">
