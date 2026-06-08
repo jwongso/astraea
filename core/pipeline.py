@@ -10,6 +10,25 @@ from core.retriever import SearchResult, VectorStore
 
 _TOP_K = int(os.getenv("TOP_K", "5"))
 
+# Score multipliers for manually ingested secondary sources.
+# legislation/case_law/official_policy: no discount - authoritative sources.
+# law_review/advocacy_submission: 0.85 - useful context, should not outrank tribunal cases.
+# commercial_commentary: 0.80 - lowest priority, treat as background only.
+_MANUAL_DISCOUNTS: dict[str, float] = {
+    "law_review": 0.85,
+    "advocacy_submission": 0.85,
+    "commercial_commentary": 0.80,
+}
+
+
+def _apply_manual_discounts(hits: list[SearchResult]) -> list[SearchResult]:
+    for h in hits:
+        if h.payload.get("court") == "MANUAL":
+            discount = _MANUAL_DISCOUNTS.get(h.payload.get("source_type", ""), 1.0)
+            if discount != 1.0:
+                h.score = h.score * discount
+    return hits
+
 
 def _deduplicate(hits: list[SearchResult], top_k: int) -> list[SearchResult]:
     seen: dict[str, SearchResult] = {}
@@ -70,6 +89,7 @@ class RAGPipeline:
         if not raw_hits:
             return [], []
 
+        raw_hits = _apply_manual_discounts(raw_hits)
         hits = _deduplicate(raw_hits, top_k * 2)
 
         if strategy == "mmr":
