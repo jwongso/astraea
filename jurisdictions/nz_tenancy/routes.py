@@ -60,6 +60,7 @@ ROUTES: list[StatuteRoute] = [
             "water marks", "watermarks", "water stains", "water stain",
             "bond deducted", "deducted from my bond", "deducted from the bond",
             "deducted from bond",
+            "chattels list", "chattel list", "chattel",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
         synthetic_query=(
@@ -88,6 +89,8 @@ ROUTES: list[StatuteRoute] = [
             "adhesive", "renter friendly", "renter-friendly",
             "anchor furniture", "anchoring furniture", "bolt furniture",
             "bolt to wall", "fix to wall", "furniture to wall", "furniture anchoring",
+            "padlock the gate", "padlock my gate", "padlock the front gate",
+            "padlock the door", "add a padlock",
         ),
         include_any_broad=(
             "plant", "planted", "tree", "trees", "shrub", "hedge",
@@ -318,6 +321,9 @@ ROUTES: list[StatuteRoute] = [
             "finding fee", "tenant finding fee",
             "rental discrimination", "discriminating against tenants",
             "run a credit check", "conduct a credit check",
+            "lettings fees", "lettings fee",
+            "tenancy application form", "what is in a tenancy application",
+            "tenancy application questions", "required on the application",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -569,6 +575,9 @@ ROUTES: list[StatuteRoute] = [
             "force me to fixed term", "forced onto fixed term",
             "left without notice", "leave without notice", "abandoned the property",
             "tenant left without",
+            "tenant won't vacate", "tenant wont vacate", "tenant refuses to vacate",
+            "ensure tenant vacates", "tenant not vacating", "not left the property",
+            "still in the property after", "still at the property after",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -723,6 +732,8 @@ ROUTES: list[StatuteRoute] = [
             "someone to take over", "find someone to take over", "replacement tenant",
             "get out of contract", "get out of the contract", "get out of my contract",
             "get out of the agreement", "rights to leave", "right to leave",
+            "early termination", "fft early termination", "ftt early termination",
+            "break our fft", "break our ftt", "break the fft", "break the ftt",
         ),
         forced_sections=("NZLEG/RTA/s50", "NZLEG/RTA/s66"),
         synthetic_query=(
@@ -814,6 +825,8 @@ ROUTES: list[StatuteRoute] = [
             "not allowed to have guests", "guests not allowed to stay",
             "family and friends visit", "parents staying", "family visiting",
             "peace and enjoyment", "loss of peaceful enjoyment", "quiet enjoyment claim",
+            "come on to the section", "come onto the section", "builders on the section",
+            "workers on the section", "access to the section", "onto my section",
         ),
         forced_sections=("NZLEG/RTA/s38",),
         synthetic_query=(
@@ -912,6 +925,9 @@ ROUTES: list[StatuteRoute] = [
             "tenancy compliance team", "compliance unit",
             "TT order", "TT orders", "dealing with tribunal", "phone mediation",
             "reasonable storage", "storage costs",
+            "enforce a judgement", "enforce the judgement", "enforcing a judgement",
+            "enforce a judgment", "enforce the judgment", "enforcement of judgement",
+            "service of documents", "serve documents", "serving documents",
         ),
         forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
         synthetic_query=(
