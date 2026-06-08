@@ -13,7 +13,7 @@ _ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "fa
 
 # Minimum cosine similarity for a MANUAL guidance chunk to be injected.
 # Set below typical TT case scores (~0.83) so relevant guidance always surfaces.
-_GUIDANCE_THRESHOLD = float(os.getenv("GUIDANCE_THRESHOLD", "0.72"))
+_GUIDANCE_THRESHOLD = float(os.getenv("GUIDANCE_THRESHOLD", "0.75"))
 
 # Source types treated as authoritative official guidance for injection.
 # Excludes law_review/advocacy/community_legal/commercial which have score discounts.

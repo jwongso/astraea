@@ -30,7 +30,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from core.anchor import _augment_case_retrieval, _refine_retrieve, _retrieve_anchor, _retrieve_manual_guidance
+from core.anchor import _augment_case_retrieval, _GUIDANCE_THRESHOLD, _refine_retrieve, _retrieve_anchor, _retrieve_manual_guidance
 from core.browser import BrowserSession
 from core.feedback import write_feedback, write_feedback_debug, write_feedback_full, write_route_debug
 from core.jurisdiction import JurisdictionBase
@@ -377,11 +377,13 @@ def create_app(
 
                 # Inject MANUAL guidance chunk if it scored above threshold and is not
                 # already among the retrieved corpus hits.
+                guidance_injected = False
                 if guidance_text and guidance_source:
                     existing_ids = {s["case_id"] for s in sources}
                     if guidance_source["case_id"] not in existing_ids:
                         context_texts = [guidance_text] + context_texts
                         sources = [guidance_source] + sources
+                        guidance_injected = True
 
                 context_texts, sources = await _augment_case_retrieval(
                     question, retrieval_question, pipeline, jur, context_texts, sources,
@@ -497,7 +499,14 @@ def create_app(
                         "sources_sent": len(sources),
                         "truncated_chunks": 0,
                     }
-                    yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'chunks': chunk_cards, 'budget': budget})}\n\n"
+                    guidance_ev = {
+                        "injected": guidance_injected,
+                        "source": guidance_source["case_id"] if guidance_source else None,
+                        "court_name": guidance_source["court_name"] if guidance_source else None,
+                        "score": guidance_source["_score"] if guidance_source else None,
+                        "threshold": _GUIDANCE_THRESHOLD,
+                    }
+                    yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'guidance': guidance_ev, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
                 # Apply cheat code mode: prefix only the generation question.
                 # Retrieval already used the clean question above.
