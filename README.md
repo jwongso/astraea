@@ -372,6 +372,7 @@ This exposes a `window.Astraea` namespace with shared rendering and API utilitie
 | `initDisclaimer(storageKey)` | localStorage-keyed disclaimer modal (reads existing HTML) |
 | `initUserContext(storageKey)` | Floating context panel - see below |
 | `getUserContext(storageKey)` | Read stored context string for inclusion in requests |
+| `initCheatCodes(inputSelector)` | Floating lightning-bolt button that inserts cheat code prefixes into the question input - see below |
 
 ### User-local memory (`initUserContext`)
 
@@ -397,6 +398,49 @@ It is inserted above session history and legislation in the prompt anchor under 
 `"User's personal context (apply throughout your answer):"`.
 
 The floating button turns blue when context is set. Context persists until the user clears it.
+
+### Cheat codes (`initCheatCodes`)
+
+Cheat codes are slash-prefixed modes typed at the start of a question that change how the LLM
+generates its answer. Retrieval always uses the clean question; only generation is affected.
+
+| Cheat code | Effect |
+|---|---|
+| `/search` | List the most relevant case references with a 1-2 sentence summary each. No narrative answer. |
+| `/case` | Focus on Tribunal decisions and outcomes. Cite specific cases and what each decided. |
+| `/checklist` | Answer as a numbered step-by-step action list. Each step is a concrete action. |
+| `/landlord` | Answer from the landlord's perspective - rights, remedies, and obligations. |
+| `/pitfalls` | Lead with common mistakes, traps, and risks to avoid. |
+
+Users type them directly in the question box:
+
+```
+/checklist My landlord won't fix the mould
+/pitfalls I want to end my fixed-term tenancy early
+/search hardship fixed term house purchase foreseeable
+```
+
+**Enabling the UI panel**
+
+Call `Astraea.initCheatCodes(inputSelector)` once on page load. It injects a floating
+lightning-bolt button (bottom-left) that opens a panel listing all codes with examples.
+Clicking a code inserts it at the start of the input, replacing any existing code prefix:
+
+```javascript
+Astraea.initCheatCodes('#question-input');
+```
+
+**Calling via API**
+
+Pass the mode name (without slash) in the `mode` field of the `/ask/stream` request body.
+The mode prefix is applied to the generation prompt only; retrieval uses the original question:
+
+```json
+{
+  "question": "My landlord won't fix the mould",
+  "mode": "checklist"
+}
+```
 
 ---
 
