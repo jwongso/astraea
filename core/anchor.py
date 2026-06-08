@@ -226,42 +226,96 @@ async def _augment_case_retrieval(
 
 async def _retrieve_manual_guidance(
     question: str,
+    original_question: str,
     pipeline: RAGPipeline,
     existing_source_ids: set[str],
-) -> tuple[str, dict | None]:
+    jurisdiction: JurisdictionBase,
+) -> tuple[str, dict | None, str]:
     """Retrieve top-1 authoritative MANUAL guidance chunk as a parallel injection.
 
-    Searches the corpus collection filtered to MANUAL court + official source types.
-    Returns (text, source_dict) if a qualifying hit above _GUIDANCE_THRESHOLD is found
-    and its case_id is not already in existing_source_ids. Otherwise ("", None).
+    Returns (text, source_dict, reason) where reason is one of:
+      "route_forced_vector" - route-forced doc found in vector results (has real score)
+      "route_forced"        - route-forced doc fetched directly (score=0.0)
+      "vector_search"       - no route guidance; top-1 above _GUIDANCE_THRESHOLD
+      ""                    - nothing injected
+
+    Route-forced docs are injected regardless of score if a matched route lists them in
+    guidance_sources. Vector fallback applies the _GUIDANCE_THRESHOLD filter.
     """
     from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 
     try:
+        # Collect forced guidance doc IDs from all matched routes (order preserved, deduped)
+        decision = build_route_decision(
+            original_question or question, question, jurisdiction.routes
+        )
+        matched = set(decision.matched_intents)
+        forced_ids: list[str] = []
+        seen_forced: set[str] = set()
+        for route in jurisdiction.routes:
+            if route.intent in matched:
+                for gid in route.guidance_sources:
+                    if gid not in seen_forced:
+                        seen_forced.add(gid)
+                        forced_ids.append(gid)
+
         vector = await pipeline._embedder.embed(question)
         filt = Filter(must=[
             FieldCondition(key="court", match=MatchValue(value="MANUAL")),
             FieldCondition(key="source_type", match=MatchAny(any=_GUIDANCE_SOURCE_TYPES)),
         ])
+        # Use top=10 so forced docs are more likely to appear with actual scores
         hits = await asyncio.to_thread(
-            pipeline._store.search_filtered, vector, filt, 5
+            pipeline._store.search_filtered, vector, filt, 10
         )
+        hits_by_case_id = {h.case_id: h for h in hits}
+
+        if forced_ids:
+            # Route-guided path: among forced docs in vector results, pick highest score
+            best_h = None
+            best_score = -1.0
+            for gid in forced_ids:
+                if gid in existing_source_ids:
+                    continue
+                if gid in hits_by_case_id:
+                    h = hits_by_case_id[gid]
+                    if h.score > best_score:
+                        best_h, best_score = h, h.score
+
+            if best_h is not None:
+                return best_h.text, {
+                    "case_id": best_h.case_id, "title": best_h.title,
+                    "court_name": best_h.court_name, "date": best_h.date,
+                    "url": best_h.url, "_score": round(best_h.score, 4),
+                }, "route_forced_vector"
+
+            # Not in vector results - fetch first available forced doc directly
+            for gid in forced_ids:
+                if gid in existing_source_ids:
+                    continue
+                h = await asyncio.to_thread(pipeline._store.fetch_by_case_id, gid)
+                if h:
+                    return h.text, {
+                        "case_id": h.case_id, "title": h.title,
+                        "court_name": h.court_name, "date": h.date,
+                        "url": h.url, "_score": 0.0,
+                    }, "route_forced"
+
+        # No route-forced guidance (or all forced docs already retrieved): vector threshold
         for h in hits:
             if h.score < _GUIDANCE_THRESHOLD:
                 break
             if h.case_id in existing_source_ids:
                 continue
             return h.text, {
-                "case_id": h.case_id,
-                "title": h.title,
-                "court_name": h.court_name,
-                "date": h.date,
-                "url": h.url,
-                "_score": round(h.score, 4),
-            }
-        return "", None
+                "case_id": h.case_id, "title": h.title,
+                "court_name": h.court_name, "date": h.date,
+                "url": h.url, "_score": round(h.score, 4),
+            }, "vector_search"
+
+        return "", None, ""
     except Exception:
-        return "", None
+        return "", None, ""
 
 
 def _dedupe_queries(original: str, rewritten: str) -> list[str]:

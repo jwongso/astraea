@@ -33,6 +33,7 @@ class StatuteRoute:
     leg_allow_list: tuple[str, ...] = ()
     priority: int = 0
     notes: str = ""
+    guidance_sources: tuple[str, ...] = ()  # MANUAL case_ids to inject when this route fires; first scoring hit wins
     case_synthetic_query: str = ""  # if set, a supplementary case retrieval pass runs with this query
 
     # Two-tier trigger matching - use instead of include_any for routes with

@@ -423,6 +423,10 @@ ROUTES: list[StatuteRoute] = [
             "general bond landlord maximum bond amount four weeks rent section 18 "
             "residential tenancies act bond obligations receipt"
         ),
+        guidance_sources=(
+            "MANUAL/how-to-apply-for-a-bond-refund",
+            "MANUAL/bonds",
+        ),
         notes="General bond requirements - amount limits and receipt (s18).",
     ),
     StatuteRoute(
@@ -637,6 +641,10 @@ ROUTES: list[StatuteRoute] = [
             "section 51 residential tenancies act tenant notice 21 days "
             "lawful grounds termination"
         ),
+        guidance_sources=(
+            "MANUAL/giving-notice-to-end-a-tenancy",
+            "MANUAL/ending-a-tenancy",
+        ),
         notes="Termination of periodic tenancy, notice periods (s51).",
     ),
     StatuteRoute(
@@ -744,6 +752,7 @@ ROUTES: list[StatuteRoute] = [
             "notice to increase rent landlord section 28 28A residential tenancies act "
             "rent increase order unforeseen expenses 90 days"
         ),
+        guidance_sources=("MANUAL/rent-increases-and-reductions",),
         notes="Rent increases by notice or order (s28, s28A).",
     ),
     StatuteRoute(
@@ -1063,6 +1072,7 @@ ROUTES: list[StatuteRoute] = [
             "section 55 termination application tribunal section 27 "
             "rent payment obligation residential tenancies act"
         ),
+        guidance_sources=("MANUAL/rent-arrears-and-overdue-rent",),
         notes="Rent arrears, 14-day notice, termination for non-payment (s55, s27).",
     ),
 ]

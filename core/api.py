@@ -369,10 +369,10 @@ def create_app(
                     else await _rewrite_query(rewrite_input, rewrite_system)
                 )
 
-                (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log), (guidance_text, guidance_source) = await asyncio.gather(
+                (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log), (guidance_text, guidance_source, guidance_reason) = await asyncio.gather(
                     pipeline.retrieve(retrieval_question, **retrieve_kwargs),
                     _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
-                    _retrieve_manual_guidance(retrieval_question, pipeline, set()),
+                    _retrieve_manual_guidance(retrieval_question, question, pipeline, set(), jur),
                 )
 
                 # Inject MANUAL guidance chunk if it scored above threshold and is not
@@ -505,6 +505,7 @@ def create_app(
                         "court_name": guidance_source["court_name"] if guidance_source else None,
                         "score": guidance_source["_score"] if guidance_source else None,
                         "threshold": _GUIDANCE_THRESHOLD,
+                        "reason": guidance_reason,
                     }
                     yield f"data: {json.dumps({'type': 'context_debug', 'original_query': question, 'rewrite_input': rewrite_input, 'rewritten_query': retrieval_question, 'rewrite_used': retrieval_question != rewrite_input, 'statute_routing': routing_ev, 'anchor': {'method': 'vector+cache', 'sections': anchor_sections}, 'guidance': guidance_ev, 'chunks': chunk_cards, 'budget': budget})}\n\n"
 
