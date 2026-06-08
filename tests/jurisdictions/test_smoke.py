@@ -40,7 +40,7 @@ class TestSmokeFixtures:
         assert jurisdiction.smoke_fixtures, \
             f"{jurisdiction.name} has no smoke_fixtures - add at least one SmokeFixture"
 
-    @pytest.mark.parametrize("fixture_index", range(20))
+    @pytest.mark.parametrize("fixture_index", range(25))
     def test_smoke_fixture(self, app_client, jurisdiction, fixture_index):
         fixtures = jurisdiction.smoke_fixtures
         if fixture_index >= len(fixtures):
@@ -75,6 +75,21 @@ class TestSmokeFixtures:
             n = len(_source_ids(result))
             assert n >= fixture.min_sources, (
                 f"[{desc}] Expected at least {fixture.min_sources} case sources, got {n}.\n"
+                f"  Question: {fixture.question}"
+            )
+
+        if fixture.expected_guidance_sources:
+            guidance = result.get("guidance")
+            assert guidance is not None, (
+                f"[{desc}] Expected guidance injection but /retrieve returned no 'guidance' field.\n"
+                f"  Expected one of: {fixture.expected_guidance_sources}\n"
+                f"  Question: {fixture.question}"
+            )
+            got_source = guidance.get("source")
+            assert got_source in fixture.expected_guidance_sources, (
+                f"[{desc}] Guidance source mismatch.\n"
+                f"  Expected one of: {fixture.expected_guidance_sources}\n"
+                f"  Got: {got_source!r} (reason={guidance.get('reason')})\n"
                 f"  Question: {fixture.question}"
             )
 

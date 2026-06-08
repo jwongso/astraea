@@ -120,7 +120,8 @@ class NZTenancyJurisdiction(JurisdictionBase):
             SmokeFixture(
                 question="My landlord wants to increase my rent. How much notice do they need to give?",
                 expected_sections=["NZLEG/RTA/s28"],
-                description="rent_payment route",
+                expected_guidance_sources=["MANUAL/rent-increases-and-reductions"],
+                description="rent_increase route - notice requirements + official guidance injection",
             ),
             SmokeFixture(
                 question="My landlord did not fix a leaking ceiling for 5 months. What compensation can I apply for?",
@@ -179,6 +180,31 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 expected_sections=["NZLEG/RTA/s45", "NZLEG/RTA/s13A"],
                 description="carpark_dispute route - landlord removing agreed carpark, s45 landlord obligations and s13A tenancy agreement contents",
             ),
+            # --- guidance injection smoke tests ---
+            SmokeFixture(
+                question="How do I get my bond back after moving out?",
+                expected_sections=["NZLEG/RTA/s18"],
+                expected_guidance_sources=["MANUAL/how-to-apply-for-a-bond-refund", "MANUAL/bonds"],
+                description="bond route - guidance injection: bond refund page",
+            ),
+            SmokeFixture(
+                question="I want to give notice to end my periodic tenancy and move out in 3 weeks.",
+                expected_sections=["NZLEG/RTA/s51"],
+                expected_guidance_sources=["MANUAL/giving-notice-to-end-a-tenancy", "MANUAL/ending-a-tenancy"],
+                description="termination_notice route - guidance injection: giving notice page",
+            ),
+            SmokeFixture(
+                question="Can my landlord refuse to let me have a cat at my rental?",
+                expected_sections=["NZLEG/RTA/s42E"],
+                expected_guidance_sources=["MANUAL/requesting-pet-consent", "MANUAL/rules-about-pets"],
+                description="agreement_form route (pets) - guidance injection via vector threshold",
+            ),
+            SmokeFixture(
+                question="I am behind on rent by 3 weeks and cannot pay. What will happen?",
+                expected_sections=["NZLEG/RTA/s55", "NZLEG/RTA/s27"],
+                expected_guidance_sources=["MANUAL/rent-arrears-and-overdue-rent"],
+                description="rent_arrears route - guidance injection: rent arrears page",
+            ),
         ]
 
     @property
@@ -192,10 +218,10 @@ class NZTenancyJurisdiction(JurisdictionBase):
                 description="wear_and_tear positive - worn carpet after 8 years",
             ),
             RouteFixture(
-                question="I installed new carpet in the bedroom as a minor improvement without asking the landlord.",
+                question="I installed new shelving in the bedroom as a minor improvement without asking the landlord.",
                 expected_routes=["property_change"],
                 forbidden_routes=["wear_and_tear"],
-                description="wear_and_tear negative - carpet install is property_change, not wear_and_tear",
+                description="wear_and_tear negative - shelving install is property_change, not wear_and_tear",
             ),
             # --- property_change ---
             RouteFixture(

@@ -594,9 +594,10 @@ def create_app(
             else await _rewrite_query(rewrite_input, rewrite_system)
         )
 
-        (context_texts, sources), (anchor_vstore, leg_sources, _ce_gate_log) = await asyncio.gather(
+        (context_texts, sources), (anchor_vstore, leg_sources, _ce_gate_log), (guidance_text, guidance_source, guidance_reason) = await asyncio.gather(
             pipeline.retrieve(retrieval_question, top_k=5, strategy=strategy, min_score=0.75, min_chunks=2),
             _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
+            _retrieve_manual_guidance(retrieval_question, question, pipeline, set(), jur),
         )
 
         context_texts, sources = await _augment_case_retrieval(
@@ -622,11 +623,22 @@ def create_app(
             for s in sources
         ]
 
+        guidance_result = None
+        if guidance_source:
+            guidance_result = {
+                "injected": guidance_source["case_id"] not in {s.get("case_id") for s in public_sources},
+                "source": guidance_source["case_id"],
+                "court_name": guidance_source.get("court_name"),
+                "score": guidance_source.get("_score"),
+                "reason": guidance_reason,
+            }
+
         return {
             "context_texts": context_texts,
             "sources": public_sources,
             "legislation": leg_sources,
             "anchor": anchor,
+            "guidance": guidance_result,
         }
 
     @app.post("/feedback")

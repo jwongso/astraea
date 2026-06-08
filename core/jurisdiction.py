@@ -77,6 +77,7 @@ class SmokeFixture:
     forbidden_sections: list[str] = field(default_factory=list)
     description: str = ""
     min_sources: int = 0            # if > 0, assert at least this many case sources returned
+    expected_guidance_sources: list[str] = field(default_factory=list)  # MANUAL case_ids that MUST be injected
 
 
 @dataclass
