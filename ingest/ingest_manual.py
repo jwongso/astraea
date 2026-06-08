@@ -72,7 +72,83 @@ def _extract_docx(path: Path) -> tuple[str, int]:
     return "\n\n".join(paragraphs), 0
 
 
-def _extract_text(path: Path) -> tuple[str, int]:
+_SKIP_TAGS = {"script", "style", "nav", "header", "footer", "aside", "noscript", "form"}
+_CONTENT_IDS = {"main-content", "main", "content", "page-content", "primary"}
+_CONTENT_CLASSES = {"main-content", "page-content", "content-area", "entry-content", "article-body"}
+
+
+def _extract_url(url: str) -> tuple[str, str]:
+    """Fetch a URL and return (text, page_title)."""
+    import requests
+    from bs4 import BeautifulSoup, Comment
+
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; AstraeaBot/1.0; +https://astraea.localrun.ai)"}
+    resp = requests.get(url, headers=headers, timeout=30)
+    if resp.status_code == 404:
+        print(f"  WARNING: 404 Not Found - {url}")
+        return "", ""
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    # Page title - normalize whitespace then strip site suffix
+    title_tag = soup.find("title")
+    page_title = re.sub(r"\s+", " ", title_tag.get_text()).strip() if title_tag else ""
+    for sep in [" | ", " - ", " - NZ", " :: ", " » "]:
+        if sep in page_title:
+            page_title = page_title.split(sep)[0].strip()
+            break
+    # Also strip trailing " »" without space
+    page_title = page_title.rstrip(" »").strip()
+
+    # Remove unwanted tags
+    for tag in soup.find_all(_SKIP_TAGS):
+        tag.decompose()
+    for comment in soup.find_all(string=lambda t: isinstance(t, Comment)):
+        comment.extract()
+
+    # Try to find main content region
+    main = None
+    for id_ in _CONTENT_IDS:
+        main = soup.find(id=id_) or soup.find(class_=id_)
+        if main:
+            break
+    if not main:
+        for cls in _CONTENT_CLASSES:
+            main = soup.find(class_=cls)
+            if main:
+                break
+    if not main:
+        main = soup.find("main") or soup.find("article") or soup.body
+
+    if main is None:
+        return "", page_title
+
+    # Extract readable text preserving block structure
+    lines = []
+    for el in main.descendants:
+        if el.name in ("h1", "h2", "h3", "h4"):
+            text = el.get_text(" ", strip=True)
+            if text:
+                lines.append(f"\n{text}\n")
+        elif el.name in ("p", "li", "td", "dt", "dd"):
+            text = el.get_text(" ", strip=True)
+            if text:
+                lines.append(text)
+    text = "\n".join(lines).strip()
+
+    # Fallback: plain text of whole main region
+    if len(text) < 200:
+        text = main.get_text(" ", strip=True)
+
+    return text, page_title
+
+
+def _extract_text(path_or_url: "Path | str") -> tuple[str, int]:
+    s = str(path_or_url)
+    if s.startswith("http://") or s.startswith("https://"):
+        text, _ = _extract_url(s)
+        return text, 0
+    path = Path(s)
     suffix = path.suffix.lower()
     if suffix == ".pdf":
         return _extract_pdf(path)
@@ -204,7 +280,7 @@ def _upsert_chunks(client, collection: str, vectors: list, payloads: list[dict])
 # ---------------------------------------------------------------------------
 
 def ingest_file(
-    path: Path,
+    path: "Path | str",
     client,
     collection: str,
     embedder,
@@ -216,17 +292,29 @@ def ingest_file(
     author: str,
     force: bool,
 ) -> int:
-    print(f"\n[{path.name}]")
+    is_url = str(path).startswith("http://") or str(path).startswith("https://")
+    label = str(path) if is_url else Path(path).name
+    print(f"\n[{label}]")
 
-    text, page_count = _extract_text(path)
+    if is_url:
+        fetched_text, fetched_title = _extract_url(str(path))
+        text, page_count = fetched_text, 0
+        # For URLs the canonical URL is the path itself unless overridden
+        default_url = str(path)
+        default_title = fetched_title or str(path)
+    else:
+        text, page_count = _extract_text(path)
+        default_url = f"file://{Path(path).resolve()}"
+        default_title = None
+
     if not text.strip():
         print("  WARNING: no text extracted, skipping")
         return 0
     print(f"  Extracted {len(text)} chars" + (f" from {page_count} pages" if page_count else ""))
 
-    resolved_title = title or _guess_title(text, path.stem)
+    resolved_title = title or (default_title if is_url else _guess_title(text, Path(path).stem))
     resolved_date = date or _guess_year(text)
-    resolved_url = url or f"file://{path.resolve()}"
+    resolved_url = url or default_url
 
     case_id = f"MANUAL/{_slug(resolved_title)}"
     if case_id in existing_ids and not force:
@@ -264,16 +352,18 @@ def ingest_file(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Ingest PDF/DOCX/TXT into Qdrant")
-    parser.add_argument("files", nargs="*", type=Path, help="Files to ingest")
+    parser.add_argument("files", nargs="*", help="Files or URLs to ingest")
     parser.add_argument("--collection", default="nztt_moj", help="Qdrant collection name")
     parser.add_argument("--qdrant-url", default="http://localhost:6333")
     parser.add_argument("--source-type", default="official_policy",
                         choices=[
-                            "legislation",        # RTA, regulations (actual statute text)
-                            "case_law",           # Tenancy Tribunal / court decisions
-                            "official_policy",    # Tenancy Services, MoJ, HUD guidance
-                            "law_review",         # VUWLR, Auckland ULR, academic papers
-                            "advocacy_submission", # CAB, NGO submissions
+                            "legislation",           # RTA, regulations (actual statute text)
+                            "case_law",              # Tenancy Tribunal / court decisions
+                            "official_policy",       # HUD RIS, MoJ reform policy documents
+                            "official_guidance",     # Tenancy Services, OPC consumer guidance
+                            "law_review",            # VUWLR, Auckland ULR, academic papers
+                            "advocacy_submission",   # CAB, NGO submissions
+                            "community_legal_guidance", # CAB articles, community legal centres
                             "commercial_commentary", # law firm / property manager articles
                         ])
     parser.add_argument("--title", help="Override document title")
@@ -318,12 +408,13 @@ def main() -> None:
     print(f"  {len(existing_ids)} manual document(s) already in collection")
 
     total_chunks = 0
-    for path in args.files:
-        if not path.exists():
-            print(f"  ERROR: {path} not found, skipping")
+    for item in args.files:
+        is_url = str(item).startswith("http://") or str(item).startswith("https://")
+        if not is_url and not Path(item).exists():
+            print(f"  ERROR: {item} not found, skipping")
             continue
         total_chunks += ingest_file(
-            path=path,
+            path=item,
             client=client,
             collection=args.collection,
             embedder=embedder,

@@ -17,6 +17,7 @@ _TOP_K = int(os.getenv("TOP_K", "5"))
 _MANUAL_DISCOUNTS: dict[str, float] = {
     "law_review": 0.85,
     "advocacy_submission": 0.85,
+    "community_legal_guidance": 0.85,
     "commercial_commentary": 0.80,
 }
 
