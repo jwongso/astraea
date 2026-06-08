@@ -61,6 +61,9 @@ ROUTES: list[StatuteRoute] = [
             "bond deducted", "deducted from my bond", "deducted from the bond",
             "deducted from bond",
             "chattels list", "chattel list", "chattel",
+            "empty and clean the bins", "bins need to be empty", "empty the bins before",
+            "bins emptied before", "bins clean before",
+            "soft in lots of places", "soft in many places", "floor is soft in",
         ),
         forced_sections=("NZLEG/RTA/s49A", "NZLEG/RTA/s49B", "NZLEG/RTA/s40"),
         synthetic_query=(
@@ -231,6 +234,9 @@ ROUTES: list[StatuteRoute] = [
             "code of compliance", "no code of compliance", "CCC",
             "illegal dwelling", "illegal rental",
             "lingering smell", "lingering odour", "curry smell", "odour in",
+            "responsible for the garden", "responsible for gardens",
+            "garden maintenance", "maintain the garden", "who looks after the garden",
+            "trees and shrubs", "hedging in the rental", "garden upkeep",
         ),
         exclude_any=(
             "fair wear and tear", "wear and tear",
@@ -321,6 +327,8 @@ ROUTES: list[StatuteRoute] = [
             "finding fee", "tenant finding fee",
             "rental discrimination", "discriminating against tenants",
             "run a credit check", "conduct a credit check",
+            "on a benefit", "declined because on a benefit", "benefit recipient",
+            "discriminate against benefit", "beneficiary tenant", "winz benefit",
             "lettings fees", "lettings fee",
             "tenancy application form", "what is in a tenancy application",
             "tenancy application questions", "required on the application",
@@ -578,6 +586,9 @@ ROUTES: list[StatuteRoute] = [
             "tenant won't vacate", "tenant wont vacate", "tenant refuses to vacate",
             "ensure tenant vacates", "tenant not vacating", "not left the property",
             "still in the property after", "still at the property after",
+            "belongings left at the property", "left my belongings in",
+            "belongings still in the property", "my stuff still at",
+            "left belongings behind", "belongings left behind",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -734,6 +745,9 @@ ROUTES: list[StatuteRoute] = [
             "get out of the agreement", "rights to leave", "right to leave",
             "early termination", "fft early termination", "ftt early termination",
             "break our fft", "break our ftt", "break the fft", "break the ftt",
+            "breaking my lease", "one tenant wants to leave", "one of us wants to leave",
+            "co-tenant wants to leave", "joint tenancy one", "one flatmate leaving",
+            "one of us is leaving", "one person leaving the tenancy",
         ),
         forced_sections=("NZLEG/RTA/s50", "NZLEG/RTA/s66"),
         synthetic_query=(
