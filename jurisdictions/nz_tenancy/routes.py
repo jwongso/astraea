@@ -300,6 +300,7 @@ ROUTES: list[StatuteRoute] = [
             "pet cover letter", "applying with a pet", "applying for a house with a pet",
             "pet reference", "pet resume",
             "landlord backed out", "landlord pulled out", "changed their minds",
+            "changed our minds", "changed my mind", "we've changed our mind",
             "cancelled the tenancy", "pulled out of tenancy", "withdrew the offer",
             "going overseas", "overseas for", "travelling overseas",
             "away for weeks", "away for a month", "leaving the country",
@@ -348,6 +349,9 @@ ROUTES: list[StatuteRoute] = [
             "lettings fees", "lettings fee",
             "tenancy application form", "what is in a tenancy application",
             "tenancy application questions", "required on the application",
+            "kainga ora", "from KO to", "KO to private", "state housing to private",
+            "move from state", "moving from public housing", "housing new zealand",
+            "from KO rental", "leaving KO", "HNZ",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
