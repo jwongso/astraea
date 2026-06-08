@@ -49,6 +49,7 @@ ROUTES: list[StatuteRoute] = [
             "repaint", "repainting", "re-paint", "re-painting",
             "repaint the wall", "repainted the wall", "paint the wall",
             "sticky hooks", "command hooks", "hooks on the wall", "adhesive hooks",
+            "commercial cleaners", "before and after photos", "cleaning photos",
             "is this reasonable", "is the cost reasonable", "is the quote reasonable",
             "reasonable cost to", "reasonable amount to", "reasonable charge",
             "overcharging me for", "overcharging for repairs", "too expensive for repairs",
@@ -224,6 +225,9 @@ ROUTES: list[StatuteRoute] = [
             "not happy with the state", "unhappy with the state",
             "liability of landlord", "landlord liability", "indemnify the tenant",
             "indemnify the tenants",
+            "code of compliance", "no code of compliance", "CCC",
+            "illegal dwelling", "illegal rental",
+            "lingering smell", "lingering odour", "curry smell", "odour in",
         ),
         exclude_any=(
             "fair wear and tear", "wear and tear",
@@ -310,6 +314,10 @@ ROUTES: list[StatuteRoute] = [
             "unregistered car", "unregistered vehicle", "car with no wof",
             "car wof", "no wof car", "car in the driveway", "car in driveway",
             "vehicle in driveway", "unreg car", "unreg wof",
+            "has cats", "has a cat", "tenant with cats",
+            "finding fee", "tenant finding fee",
+            "rental discrimination", "discriminating against tenants",
+            "run a credit check", "conduct a credit check",
         ),
         exclude_any=(
             # Don't fire when the tenant is saying they DON'T have an agreement -
@@ -559,6 +567,8 @@ ROUTES: list[StatuteRoute] = [
             "change to fixed term", "switch to fixed term", "convert to fixed term",
             "periodic to fixed term", "change from periodic to fixed",
             "force me to fixed term", "forced onto fixed term",
+            "left without notice", "leave without notice", "abandoned the property",
+            "tenant left without",
         ),
         forced_sections=("NZLEG/RTA/s51",),
         synthetic_query=(
@@ -803,6 +813,7 @@ ROUTES: list[StatuteRoute] = [
             "guests staying overnight", "visitors staying overnight",
             "not allowed to have guests", "guests not allowed to stay",
             "family and friends visit", "parents staying", "family visiting",
+            "peace and enjoyment", "loss of peaceful enjoyment", "quiet enjoyment claim",
         ),
         forced_sections=("NZLEG/RTA/s38",),
         synthetic_query=(
@@ -899,6 +910,8 @@ ROUTES: list[StatuteRoute] = [
             "disputes tribunal",
             "tenancy compliance", "compliance and investigations", "compliance team",
             "tenancy compliance team", "compliance unit",
+            "TT order", "TT orders", "dealing with tribunal", "phone mediation",
+            "reasonable storage", "storage costs",
         ),
         forced_sections=("NZLEG/RTA/s85", "NZLEG/RTA/s86"),
         synthetic_query=(
