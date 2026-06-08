@@ -8,6 +8,15 @@ always sees the correct legislative grounding.
 from core.routing import StatuteRoute
 
 ROUTES: list[StatuteRoute] = [
+
+    # ── PROPERTY CONDITION ────────────────────────────────────────────────────
+    # Damage, maintenance, and physical standards of the rental premises.
+    # wear_and_tear  - tenant damage liability vs fair wear, bond deductions
+    # property_change - tenant alterations, fixtures, consent requirements
+    # repairs_maintenance - landlord's s45 duty to maintain, repair timeframes
+    # healthy_homes - HHS2019 heating/insulation/ventilation/draught/moisture
+    # healthy_homes_facilities - lighting, smoke alarms (forces HHS sections)
+
     StatuteRoute(
         intent="wear_and_tear",
         include_any=(
@@ -255,6 +264,13 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="Landlord maintenance and repair obligations (s45).",
     ),
+    # ── TENANCY AGREEMENT & PARTIES ───────────────────────────────────────────
+    # Formation, contents, and parties to the tenancy relationship.
+    # agreement_form - agreement contents, pets, credit checks, fees, applicants
+    # bond           - lodgement, receipt, refund, installments (s18)
+    # landlord_entry - inspection notice, right of access, entry rules (s48)
+    # sham_flatmate_agreement - landlord not resident, boarder/licensee misuse
+
     StatuteRoute(
         intent="agreement_form",
         include_any=(
@@ -528,6 +544,14 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="Sham flatmate/boarder agreements where landlord is not resident (s5).",
     ),
+    # ── TENANCY LIFECYCLE ─────────────────────────────────────────────────────
+    # Starting, changing, and ending the tenancy.
+    # termination_notice - notice periods, eviction, periodic/fixed end (s51)
+    # fixed_term_sell    - landlord selling with vacant possession (s60A, s50)
+    # tenant_early_exit  - tenant breaking fixed term early (s50, s66)
+    # carpark_dispute    - loss of agreed parking/garage facility
+    # family_violence_exit - s55B/s55C early exit for family violence victims
+
     StatuteRoute(
         intent="termination_notice",
         include_any=(
@@ -676,6 +700,13 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="HHS facilities: lighting, smoke alarms - forces ventilation sections as grounding context.",
     ),
+    # ── MONEY ────────────────────────────────────────────────────────────────
+    # Rent, water, and arrears.
+    # rent_increase         - s28/s28A notice requirements, bidding wars
+    # fixed_term_rent_review - review clause in fixed term agreement (s13A, s50)
+    # water_charges         - water/wastewater liability, LPG bottles (s36)
+    # rent_arrears          - 14-day notice, unpaid rent, payment schedules (s55)
+
     StatuteRoute(
         intent="rent_increase",
         include_any=(
@@ -799,6 +830,11 @@ ROUTES: list[StatuteRoute] = [
         ),
         notes="Family violence exit - tenant can terminate without notice using s55B/s55C.",
     ),
+    # ── TENANT RIGHTS & DISPUTES ──────────────────────────────────────────────
+    # Tenant protections, disputes, and enforcement.
+    # quiet_enjoyment  - s38 peaceful possession, harassment, noise, rent reduction
+    # tribunal_process - TT application, evidence, hearings, enforcement (s85/s86)
+
     StatuteRoute(
         intent="quiet_enjoyment",
         include_any=(
