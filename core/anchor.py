@@ -11,6 +11,14 @@ from core.routing import allow_section, build_route_decision, normalize_query
 
 _ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
 
+# Minimum cosine similarity for a MANUAL guidance chunk to be injected.
+# Set below typical TT case scores (~0.83) so relevant guidance always surfaces.
+_GUIDANCE_THRESHOLD = float(os.getenv("GUIDANCE_THRESHOLD", "0.72"))
+
+# Source types treated as authoritative official guidance for injection.
+# Excludes law_review/advocacy/community_legal/commercial which have score discounts.
+_GUIDANCE_SOURCE_TYPES = ["official_guidance", "official_policy"]
+
 # Cross-encoder relevance gate for legislation retrieval.
 # Loaded lazily at first scored query; None when ENABLE_RERANKER=false.
 _reranker = None
@@ -214,6 +222,46 @@ async def _augment_case_retrieval(
                 sources.append(src)
                 existing_ids.add(src["case_id"])
     return context_texts, sources
+
+
+async def _retrieve_manual_guidance(
+    question: str,
+    pipeline: RAGPipeline,
+    existing_source_ids: set[str],
+) -> tuple[str, dict | None]:
+    """Retrieve top-1 authoritative MANUAL guidance chunk as a parallel injection.
+
+    Searches the corpus collection filtered to MANUAL court + official source types.
+    Returns (text, source_dict) if a qualifying hit above _GUIDANCE_THRESHOLD is found
+    and its case_id is not already in existing_source_ids. Otherwise ("", None).
+    """
+    from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
+
+    try:
+        vector = await pipeline._embedder.embed(question)
+        filt = Filter(must=[
+            FieldCondition(key="court", match=MatchValue(value="MANUAL")),
+            FieldCondition(key="source_type", match=MatchAny(any=_GUIDANCE_SOURCE_TYPES)),
+        ])
+        hits = await asyncio.to_thread(
+            pipeline._store.search_filtered, vector, filt, 5
+        )
+        for h in hits:
+            if h.score < _GUIDANCE_THRESHOLD:
+                break
+            if h.case_id in existing_source_ids:
+                continue
+            return h.text, {
+                "case_id": h.case_id,
+                "title": h.title,
+                "court_name": h.court_name,
+                "date": h.date,
+                "url": h.url,
+                "_score": round(h.score, 4),
+            }
+        return "", None
+    except Exception:
+        return "", None
 
 
 def _dedupe_queries(original: str, rewritten: str) -> list[str]:

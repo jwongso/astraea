@@ -30,7 +30,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from core.anchor import _augment_case_retrieval, _refine_retrieve, _retrieve_anchor
+from core.anchor import _augment_case_retrieval, _refine_retrieve, _retrieve_anchor, _retrieve_manual_guidance
 from core.browser import BrowserSession
 from core.feedback import write_feedback, write_feedback_debug, write_feedback_full, write_route_debug
 from core.jurisdiction import JurisdictionBase
@@ -369,10 +369,19 @@ def create_app(
                     else await _rewrite_query(rewrite_input, rewrite_system)
                 )
 
-                (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log) = await asyncio.gather(
+                (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log), (guidance_text, guidance_source) = await asyncio.gather(
                     pipeline.retrieve(retrieval_question, **retrieve_kwargs),
                     _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
+                    _retrieve_manual_guidance(retrieval_question, pipeline, set()),
                 )
+
+                # Inject MANUAL guidance chunk if it scored above threshold and is not
+                # already among the retrieved corpus hits.
+                if guidance_text and guidance_source:
+                    existing_ids = {s["case_id"] for s in sources}
+                    if guidance_source["case_id"] not in existing_ids:
+                        context_texts = [guidance_text] + context_texts
+                        sources = [guidance_source] + sources
 
                 context_texts, sources = await _augment_case_retrieval(
                     question, retrieval_question, pipeline, jur, context_texts, sources,
