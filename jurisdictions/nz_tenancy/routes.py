@@ -152,6 +152,7 @@ ROUTES: list[StatuteRoute] = [
             "not working", "doesn't work", "doesnt work", "isn't working", "isnt working",
             "broken", "won't fix", "wont fix",
             "shower seal", "shower sealed", "shower not sealed", "never been sealed",
+            "never sealed", "not sealed properly", "improperly sealed",
             "shower leaking", "shower leak", "shower sealing",
             "hasn't fixed", "hasnt fixed", "not fixed", "not repaired",
             "not maintained", "hasn't maintained", "has not maintained",
