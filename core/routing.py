@@ -74,16 +74,23 @@ class RouteDecision:
     near_miss_routes: tuple[tuple[str, tuple[str, ...]], ...] # ((intent, (broad_terms_matched, ...)), ...) - broad fired, context gate failed
 
 
+# Maps curly quotes and dashes to ASCII equivalents before trigger matching.
+# Keys are ordinals to avoid source-file encoding issues with literal Unicode.
+_NORMALIZE_TABLE = str.maketrans({
+    0x2018: 0x27,  # left single quotation mark  -> apostrophe
+    0x2019: 0x27,  # right single quotation mark -> apostrophe
+    0x201C: 0x22,  # left double quotation mark  -> double quote
+    0x201D: 0x22,  # right double quotation mark -> double quote
+    0x2014: 0x20,  # em dash                     -> space
+    0x2013: 0x20,  # en dash                     -> space
+    0x2012: 0x20,  # figure dash                 -> space
+    0x2015: 0x20,  # horizontal bar              -> space
+    0x002D: 0x20,  # hyphen-minus                -> space
+})
+
+
 def normalize_query(text: str) -> str:
-    return " ".join(
-        text.lower()
-        .replace("’", "'")   # curly right apostrophe -> ASCII
-        .replace("‘", "'")   # curly left apostrophe -> ASCII
-        .replace("“", '"')   # curly left double quote -> ASCII
-        .replace("”", '"')   # curly right double quote -> ASCII
-        .replace("-", " ")
-        .split()
-    )
+    return " ".join(text.lower().translate(_NORMALIZE_TABLE).split())
 
 
 def _route_triggered(route: StatuteRoute, q: str) -> bool:
