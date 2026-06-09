@@ -75,7 +75,15 @@ class RouteDecision:
 
 
 def normalize_query(text: str) -> str:
-    return " ".join(text.lower().replace("-", " ").split())
+    return " ".join(
+        text.lower()
+        .replace("’", "'")   # curly right apostrophe -> ASCII
+        .replace("‘", "'")   # curly left apostrophe -> ASCII
+        .replace("“", '"')   # curly left double quote -> ASCII
+        .replace("”", '"')   # curly right double quote -> ASCII
+        .replace("-", " ")
+        .split()
+    )
 
 
 def _route_triggered(route: StatuteRoute, q: str) -> bool:
