@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import os
+import time
 import uuid
 from typing import Any
+
+from core.timing import get_timer
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -131,6 +134,7 @@ class VectorStore:
 
         query_filter = Filter(must=must or None, should=should or None) if (must or should) else None
 
+        t0 = time.perf_counter_ns()
         hits = self._client.query_points(
             collection_name=self._collection,
             query=query_vector,
@@ -138,10 +142,14 @@ class VectorStore:
             query_filter=query_filter,
             with_payload=True,
         ).points
+        if timer := get_timer():
+            timer.record("qdrant_search", (time.perf_counter_ns() - t0) // 1000,
+                         collection=self._collection, top_k=top_k, hits=len(hits))
         return [SearchResult(h.payload, h.score) for h in hits]
 
     def fetch_by_case_id(self, case_id: str) -> "SearchResult | None":
         """Return one representative chunk for a case_id (first chunk found)."""
+        t0 = time.perf_counter_ns()
         results, _ = self._client.scroll(
             collection_name=self._collection,
             scroll_filter=Filter(must=[FieldCondition(key="case_id", match=MatchValue(value=case_id))]),
@@ -149,6 +157,9 @@ class VectorStore:
             with_payload=True,
             with_vectors=False,
         )
+        if timer := get_timer():
+            timer.record("qdrant_fetch", (time.perf_counter_ns() - t0) // 1000,
+                         collection=self._collection, case_id=case_id, found=bool(results))
         return SearchResult(results[0].payload, 1.0) if results else None
 
     @property
@@ -165,6 +176,7 @@ class VectorStore:
         query_filter: "Filter",
         top_k: int = _TOP_K_DEFAULT,
     ) -> list[SearchResult]:
+        t0 = time.perf_counter_ns()
         hits = self._client.query_points(
             collection_name=self._collection,
             query=query_vector,
@@ -172,6 +184,9 @@ class VectorStore:
             query_filter=query_filter,
             with_payload=True,
         ).points
+        if timer := get_timer():
+            timer.record("qdrant_search_filtered", (time.perf_counter_ns() - t0) // 1000,
+                         collection=self._collection, top_k=top_k, hits=len(hits))
         return [SearchResult(h.payload, h.score) for h in hits]
 
     def scroll_filtered(

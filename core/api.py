@@ -32,6 +32,7 @@ from pydantic import BaseModel
 
 from core.anchor import _augment_case_retrieval, _GUIDANCE_THRESHOLD, _refine_retrieve, _retrieve_anchor, _retrieve_manual_guidance
 from core.browser import BrowserSession
+from core.timing import install_timer, get_timer
 from core.feedback import write_feedback, write_feedback_debug, write_feedback_full, write_route_debug
 from core.jurisdiction import JurisdictionBase
 from core.legislation import LegislationCache
@@ -330,7 +331,10 @@ def create_app(
     async def ask_stream(req: AskRequest, request: Request) -> StreamingResponse:
         _check_token(request)
         await _check_llm()
+        _req_timer, _timer_tok = install_timer()
+        _t_san = time.perf_counter_ns()
         question = sanitize_question(req.question.strip(), jurisdiction.max_question_chars)
+        _req_timer.record("sanitize_ms", (time.perf_counter_ns() - _t_san) // 1_000_000)
 
         pipeline: RAGPipeline = request.app.state.pipeline
         leg_store: VectorStore | None = request.app.state.leg_store
@@ -345,7 +349,9 @@ def create_app(
 
         async def _event_stream():
             ip: str | None = None
-            t0 = time.monotonic()
+            timer = get_timer()
+            if timer is None:
+                timer, _ = install_timer()
             try:
                 if will_wait():
                     yield f"data: {json.dumps({'type': 'queue', **queue_wait_estimate()})}\n\n"
@@ -363,17 +369,38 @@ def create_app(
 
                 retrieve_kwargs: dict = {"top_k": 5, "strategy": strategy, "min_score": 0.75, "min_chunks": 2}
 
+                t0 = time.perf_counter_ns()
                 rewrite_input = _strip_context_prefixes(question)
                 retrieval_question = (
                     rewrite_input if skip_rewrite
                     else await _rewrite_query(rewrite_input, rewrite_system)
                 )
+                timer.record("rewrite_ms", (time.perf_counter_ns() - t0) // 1000)
 
+                async def _timed_anchor():
+                    t = time.perf_counter_ns()
+                    result = await _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur)
+                    if timer:
+                        timer.record("anchor_ms", (time.perf_counter_ns() - t) // 1000)
+                    return result
+
+                async def _timed_guidance():
+                    t = time.perf_counter_ns()
+                    result = await _retrieve_manual_guidance(retrieval_question, question, pipeline, set(), jur)
+                    if timer:
+                        timer.record("guidance_ms", (time.perf_counter_ns() - t) // 1000)
+                    return result
+
+                t0 = time.perf_counter_ns()
                 (context_texts, sources), (anchor_vstore, leg_sources, ce_gate_log), (guidance_text, guidance_source, guidance_reason) = await asyncio.gather(
                     pipeline.retrieve(retrieval_question, **retrieve_kwargs),
-                    _retrieve_anchor(retrieval_question, question, pipeline, leg_store, jur),
-                    _retrieve_manual_guidance(retrieval_question, question, pipeline, set(), jur),
+                    _timed_anchor(),
+                    _timed_guidance(),
                 )
+                _t_parallel_ns = time.perf_counter_ns() - t0
+                _t_parallel_ms = _t_parallel_ns // 1_000_000
+                if timer:
+                    timer.record("parallel_retrieve_ms", _t_parallel_ns // 1000)
 
                 # Inject MANUAL guidance chunk if it scored above threshold and is not
                 # already among the retrieved corpus hits.
@@ -385,25 +412,29 @@ def create_app(
                         sources = [guidance_source] + sources
                         guidance_injected = True
 
+                t0 = time.perf_counter_ns()
                 context_texts, sources = await _augment_case_retrieval(
                     question, retrieval_question, pipeline, jur, context_texts, sources,
                 )
+                timer.record("augment_ms", (time.perf_counter_ns() - t0) // 1000)
 
                 refine_used = False
                 if _confidence([s["_score"] for s in sources], jur.confidence_config)["level"] == "low":
+                    t0 = time.perf_counter_ns()
                     context_texts, sources = await _refine_retrieve(
                         question, retrieval_question, pipeline, sources, context_texts,
                     )
+                    timer.record("refine_ms", (time.perf_counter_ns() - t0) // 1000)
                     refine_used = True
-
-                t_retrieve = time.monotonic() - t0
 
                 web_text, web_results, from_cache = "", [], False
                 if req.verify and browser:
+                    t0 = time.perf_counter_ns()
                     web_text, web_results, from_cache = await _web_verify(
                         retrieval_question, leg_sources, browser, redis, jur,
                         alwaysonline=req.alwaysonline,
                     )
+                    timer.record("web_verify_ms", (time.perf_counter_ns() - t0) // 1000)
 
                 if not context_texts:
                     yield f"data: {json.dumps({'type': 'error', 'message': 'I could not find enough relevant decisions to answer this question reliably.'})}\n\n"
@@ -412,7 +443,8 @@ def create_app(
                 scores = [s["_score"] for s in sources]
                 public_sources = [{k: v for k, v in s.items() if k not in ("title", "_score")} for s in sources]
 
-                # Build live anchor if cached legislation text is available (zero extra latency)
+                # --- context_assembly_ms ---
+                t0 = time.perf_counter_ns()
                 live_anchor = ""
                 if jur.legislation:
                     first_act_id = next(iter(jur.legislation.acts), None)
@@ -432,6 +464,7 @@ def create_app(
                 user_ctx = req.user_context.strip()[:500] if req.user_context else ""
                 if user_ctx:
                     anchor = "User's personal context (apply throughout your answer):\n" + user_ctx + ("\n\n---\n\n" + anchor if anchor else "")
+                timer.record("context_assembly_ms", (time.perf_counter_ns() - t0) // 1000)
 
                 yield f"data: {json.dumps({'type': 'sources', 'sources': public_sources, 'legislation': leg_sources})}\n\n"
                 if web_results:
@@ -439,7 +472,7 @@ def create_app(
                 yield f"data: {json.dumps({'type': 'confidence', **_confidence(scores, jur.confidence_config)})}\n\n"
 
                 if debug_mode:
-                    yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': round(t_retrieve * 1000), 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
+                    yield f"data: {json.dumps({'type': 'debug', 'strategy': strategy, 'retrieve_ms': _t_parallel_ms, 'scores': scores, 'chunks': len(scores), 'refine_used': refine_used})}\n\n"
 
                 _no_log = request.headers.get("X-No-Log")
                 _wants_route_log = jur.log_route_decisions and not _no_log
@@ -523,24 +556,37 @@ def create_app(
                 if LLM_GLOBAL_CONCURRENCY and await global_llm_will_wait(redis):
                     yield f"data: {json.dumps({'type': 'queue', 'position': 1, 'reason': 'llm_busy', 'estimated_wait_s': _AVG_QUERY_SECONDS, 'message': 'Another query is generating - queued.'})}\n\n"
 
+                _t_llm_wait = time.perf_counter_ns()
                 global_acquired = await global_llm_acquire(redis, timeout=90.0)
+                if timer:
+                    timer.record("llm_wait_ms", (time.perf_counter_ns() - _t_llm_wait) // 1000)
                 if not global_acquired:
                     yield f"data: {json.dumps({'type': 'error', 'message': 'The server is too busy right now. Please try again in a moment.'})}\n\n"
                     return
 
-                t_gen = time.monotonic()
+                _first_token = True
+                _t_gen_start = time.perf_counter_ns()
+                _ttft_ns = 0
                 full_answer: list[str] = []
                 try:
                     async for tok in pipeline._generator.generate_stream(
                         gen_question, context_texts, sources, legislation_anchor=anchor or None
                     ):
+                        if _first_token:
+                            _ttft_ns = time.perf_counter_ns() - _t_gen_start
+                            _first_token = False
                         full_answer.append(tok)
                         yield f"data: {json.dumps({'type': 'token', 'text': tok})}\n\n"
                 finally:
+                    _gen_ns = time.perf_counter_ns() - _t_gen_start
+                    if timer:
+                        timer.record("ttft_ms", _ttft_ns // 1000)
+                        timer.record("generation_ms", _gen_ns // 1000)
                     await global_llm_release(redis)
 
                 if debug_mode:
-                    yield f"data: {json.dumps({'type': 'debug_done', 'generate_ms': round((time.monotonic() - t_gen) * 1000), 'total_ms': round((time.monotonic() - t0) * 1000)})}\n\n"
+                    _gen_ms = round(_gen_ns / 1_000_000)
+                    yield f"data: {json.dumps({'type': 'debug_done', 'generate_ms': _gen_ms, 'total_ms': round(timer.elapsed_us() / 1000, 2) if timer else 0})}\n\n"
 
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
@@ -563,6 +609,13 @@ def create_app(
                 verification = await _verify_sections("".join(full_answer), leg_sources, leg_cache, jur)
                 if verification:
                     yield f"data: {json.dumps({'type': 'verification', 'sections': verification})}\n\n"
+
+                if timer:
+                    _steps = timer._steps
+                    def _agg(*names: str) -> float:
+                        _ns = set(names)
+                        return round(sum(s["ms"] for s in _steps if s["name"] in _ns), 3)
+                    yield f"data: {json.dumps({'type': 'timing', 'sanitize_ms': _agg('sanitize_ms'), 'route_ms': _agg('anchor_route_decision'), 'embed_ms': _agg('embed_encode', 'anchor_embed'), 'qdrant_ms': _agg('qdrant_search', 'qdrant_fetch', 'qdrant_search_filtered'), 'anchor_ms': _agg('anchor_ms'), 'guidance_ms': _agg('guidance_ms'), 'context_assembly_ms': _agg('context_assembly_ms'), 'llm_wait_ms': _agg('llm_wait_ms'), 'ttft_ms': _agg('ttft_ms'), 'generation_ms': _agg('generation_ms'), 'total_ms': round(timer.elapsed_us() / 1000, 2), 'detail': _steps})}\n\n"
 
             except Exception as exc:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"

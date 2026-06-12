@@ -3,11 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 
 from core.jurisdiction import JurisdictionBase
 from core.pipeline import RAGPipeline
 from core.retriever import VectorStore
 from core.routing import allow_section, build_route_decision, normalize_query
+from core.timing import get_timer
 
 _ENABLE_RERANKER = os.getenv("ENABLE_RERANKER", "true").lower() not in ("0", "false", "no")
 
@@ -86,24 +88,38 @@ async def _retrieve_anchor(
         return "", [], []
     try:
         _ce_log: list[dict] = []
+        _t_anchor = time.perf_counter_ns()
+
         # Build route decision before embedding - keyword matching, no network call
+        t0 = time.perf_counter_ns()
         decision = build_route_decision(
             original_question or question, question, jurisdiction.routes
         )
+        if timer := get_timer():
+            timer.record("anchor_route_decision", (time.perf_counter_ns() - t0) // 1000,
+                         triggered=decision.triggered, routes=list(decision.matched_intents))
 
+        t0 = time.perf_counter_ns()
         vector = await pipeline._embedder.embed(question)
+        if timer := get_timer():
+            timer.record("anchor_embed", (time.perf_counter_ns() - t0) // 1000)
 
         # Federated search: one search per registered Act with per-source top_k quotas.
         # Falls back to single global search for jurisdictions without leg_sources.
         leg_srcs = jurisdiction.leg_sources
+        t0 = time.perf_counter_ns()
         if leg_srcs:
             raw = await _federated_leg_search(vector, leg_store, leg_srcs, decision.boosted_act_ids)
         else:
             raw = leg_store.search(vector, top_k=12)
+        if timer := get_timer():
+            timer.record("anchor_leg_search", (time.perf_counter_ns() - t0) // 1000,
+                         federated=bool(leg_srcs), raw_hits=len(raw))
 
         # Route injection - floor guarantee: forced sections always reach the candidate pool.
         # Synthetic query embeddings are cached; strings are fixed at startup so cost is
         # paid once per unique query string, not per request.
+        t0 = time.perf_counter_ns()
         injected_ids: list[str] = []
         injections: list = []
         seen_inject: set[str] = set()
@@ -138,6 +154,9 @@ async def _retrieve_anchor(
                     seen_inject.add(sid)
                     injected_ids.append(sid)
         raw = injections + raw
+        if timer := get_timer():
+            timer.record("anchor_route_injection", (time.perf_counter_ns() - t0) // 1000,
+                         injected=len(injected_ids))
 
         combined_q = normalize_query((original_question or question) + " " + question)
         lp = jurisdiction.low_priority_sections
@@ -157,6 +176,7 @@ async def _retrieve_anchor(
         reranker = _get_reranker()
         if reranker is not None:
             try:
+                t0 = time.perf_counter_ns()
                 raw, _ce_log = await asyncio.to_thread(
                     reranker.score_and_filter,
                     question,
@@ -164,6 +184,9 @@ async def _retrieve_anchor(
                     jurisdiction.leg_ce_min_score,
                     set(injected_ids),
                 )
+                if timer := get_timer():
+                    timer.record("anchor_ce_gate", (time.perf_counter_ns() - t0) // 1000,
+                                 candidates_in=len(_ce_log), kept=sum(1 for e in _ce_log if e.get("kept")))
                 if _ce_log:
                     logging.getLogger(__name__).debug("ce_gate %s", _ce_log)
             except Exception as exc:

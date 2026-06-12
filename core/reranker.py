@@ -24,7 +24,10 @@ Scores are sigmoid-normalised [0, 1]:
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
+
+from core.timing import get_timer
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +76,11 @@ class CrossEncoderReranker:
         try:
             self._ensure_loaded()
             pairs = [(query, c.text) for c in candidates]
+            t0 = time.perf_counter_ns()
             scores = self._model.predict(pairs)
+            if timer := get_timer():
+                timer.record("reranker_predict", (time.perf_counter_ns() - t0) // 1000,
+                             n=len(candidates), model=self._model_name)
             raw = scores.tolist() if hasattr(scores, "tolist") else list(scores)
             return list(zip(candidates, raw))
         except Exception as exc:

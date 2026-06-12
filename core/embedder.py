@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import time
+
 import torch
 from sentence_transformers import SentenceTransformer
+
+from core.timing import get_timer
 
 _MODEL_CONFIGS: dict[str, dict] = {
     "nomic-ai/nomic-embed-text-v1.5": {
@@ -63,6 +67,7 @@ class Embedder:
         return self._model.get_embedding_dimension()
 
     def _encode(self, texts: list[str], prefix: str = "", prompt_name: str | None = None) -> list[list[float]]:
+        t0 = time.perf_counter_ns()
         if prompt_name:
             vecs = self._model.encode(
                 texts,
@@ -76,6 +81,9 @@ class Embedder:
                 normalize_embeddings=True,
                 show_progress_bar=False,
             )
+        if timer := get_timer():
+            timer.record("embed_encode", (time.perf_counter_ns() - t0) // 1000,
+                         n=len(texts), model=self._model_name)
         return vecs.tolist()
 
     def encode_documents(self, texts: list[str], batch_size: int = 64) -> list[list[float]]:
