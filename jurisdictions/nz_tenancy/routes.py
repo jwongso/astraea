@@ -258,6 +258,18 @@ ROUTES: list[StatuteRoute] = [
             "trees and shrubs", "hedging in the rental", "garden upkeep",
             "sewage system", "septic tank", "septic system",
             "kitchen sink", "sinks not draining", "sinks aren't draining", "sink not draining",
+            "not my fault", "not my problem", "wasn't my fault", "wasn't caused by me",
+            "not because of me", "not caused by me", "i didn't break", "i didn't cause",
+            "i didn't damage", "didn't damage", "didn't break it", "didn't cause it",
+            "not broken by me", "no fault of mine", "fault of the tenant",
+            "stopped working on its own", "failed on its own", "broke on its own",
+            "equipment failure", "appliance failure", "stopped working by itself",
+            "just stopped working", "stopped working without", "broke without",
+            "landlord charging me", "landlord wants me to pay", "landlord is asking me to pay",
+            "landlord billing me", "landlord send me a bill", "sent me a bill",
+            "they want me to pay for", "want me to pay for repairs",
+            "responsible for paying", "who pays for repairs", "who is responsible for repairs",
+            "who pays to fix", "who pays to repair",
         ),
         exclude_any=(
             "fair wear and tear", "wear and tear",
@@ -268,11 +280,13 @@ ROUTES: list[StatuteRoute] = [
             "renovation without consent", "renovate without",
             "healthy homes",
         ),
-        forced_sections=("NZLEG/RTA/s45", "NZLEG/RTA/s33"),
+        forced_sections=("NZLEG/RTA/s45",),
         synthetic_query=(
             "landlord responsibility maintain premises reasonable state repair "
             "section 45 habitable condition heating hot water weathertight "
-            "residential tenancies act tenant remedies maintenance obligations"
+            "residential tenancies act tenant remedies maintenance obligations "
+            "equipment broke naturally not caused by tenant landlord must fix "
+            "heater shower kitchen appliance stopped working tenant not liable"
         ),
         notes="Landlord maintenance and repair obligations (s45).",
     ),
