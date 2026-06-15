@@ -150,6 +150,40 @@ ROUTES: list[StatuteRoute] = [
         notes="Tenant changes to premises, garden, land, fixtures.",
     ),
     StatuteRoute(
+        intent="repairs_tenant_not_at_fault",
+        include_any=(
+            "repair", "repairs", "fix", "fixed",
+            "broken", "not because of me", "not my fault",
+            "landlord wants money", "pay for repair", "charged me for repair",
+            "heater broken", "heat pump broken", "stove broken", "oven broken",
+            "hot water broken", "appliance broken",
+            "who pays for", "who is responsible for", "who pays to fix",
+            "landlord charging me", "landlord wants me to pay",
+            "landlord is asking me to pay", "sent me a bill", "sent a bill",
+            "want me to pay for", "responsible for paying",
+            "not caused by me", "i didn't break", "i didn't cause",
+            "didn't damage", "not broken by me", "broke on its own",
+            "stopped working on its own", "failed on its own",
+            "equipment failure", "appliance failure",
+        ),
+        require_context_any=(
+            "landlord", "property manager", "pm",
+            "tenant", "rental", "tenancy",
+            "heater", "heat pump", "appliance", "chattel",
+            "stove", "oven", "hot water", "washing machine",
+            "garage door", "lock", "fridge", "dishwasher",
+        ),
+        forced_sections=("NZLEG/RTA/s45", "NZLEG/RTA/s40"),
+        guidance_sources=("MANUAL/damage-and-repairs",),
+        synthetic_query=(
+            "landlord repair obligation tenant not responsible fair wear and tear "
+            "tenant did not cause damage heater appliance broken repair cost "
+            "Residential Tenancies Act section 45 section 40"
+        ),
+        priority=8,
+        notes="Tenant says item broke without tenant fault; landlord seeks repair cost.",
+    ),
+    StatuteRoute(
         intent="repairs_maintenance",
         include_any=(
             "not working", "doesn't work", "doesnt work", "isn't working", "isnt working",
