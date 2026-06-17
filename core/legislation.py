@@ -106,9 +106,14 @@ class LegislationCache:
             return ""
 
         lines = [
-            "Relevant Act sections "
-            "(current live text - use for grounding section numbers only, "
-            "do not cite with [SN] notation):"
+            "Relevant Act sections (RTA 1986 live text). "
+            "Only reference a section number (e.g. 's28') when ALL THREE hold: "
+            "(1) that section appears below, "
+            "(2) your specific claim is directly supported by its text, "
+            "(3) the section is relevant to the user's issue. "
+            "If no section satisfies all three, give practical advice from the "
+            "tribunal decisions without any section reference. "
+            "Do not use [SN] notation for legislation:"
         ]
         for ref in section_refs[:3]:
             excerpt = self.extract_section(act_id, ref, full_text, jurisdiction)

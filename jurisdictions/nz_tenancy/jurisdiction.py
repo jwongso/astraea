@@ -33,7 +33,7 @@ class NZTenancyJurisdiction(JurisdictionBase):
         return CorpusConfig(
             qdrant_collection="nztt_moj",
             courts=["NZTT"],
-            leg_collection="nz_legal",
+            leg_collection="nz_legal_v2",
             pg_database="nz_legal",
         )
 
