@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 import uuid
+from collections import defaultdict
 from typing import Any
 
 from core.timing import get_timer
@@ -147,20 +149,89 @@ class VectorStore:
                          collection=self._collection, top_k=top_k, hits=len(hits))
         return [SearchResult(h.payload, h.score) for h in hits]
 
+    # Patterns that identify amendment/transitional chunk text.
+    _AMENDMENT_TEXT_RE = re.compile(
+        r"amendments? made by section"
+        r"|as inserted by section \d+"
+        r"|as amended by section \d+"
+        r"|does not apply to (an increase|any|whether)",
+        re.IGNORECASE,
+    )
+
+    # Patterns in a section TITLE that mark it as non-operative.
+    _TRANSITIONAL_TITLE_RE = re.compile(
+        r"\b(application|savings|transitional|commencement|repeal|covid|inserted)\b",
+        re.IGNORECASE,
+    )
+
+    def _is_amendment_chunk(self, payload: dict) -> bool:
+        text = payload.get("text", "")[:400]
+        return bool(self._AMENDMENT_TEXT_RE.search(text))
+
+    def _is_transitional_title(self, title: str) -> bool:
+        return bool(self._TRANSITIONAL_TITLE_RE.search(title))
+
     def fetch_by_case_id(self, case_id: str) -> "SearchResult | None":
-        """Return one representative chunk for a case_id (first chunk found)."""
+        """Return the best chunk for a case_id: correct operative section, lowest chunk_index.
+
+        The nz_legal Qdrant collection has two corruption patterns:
+        (a) Long sections are split into overlapping 120-word windows. limit=1 scroll
+            returns a random window, usually not the section opening.
+        (b) Historical or amendment-act provisions share a section number with the
+            current operative rule (case_id collision from the legislation scraper).
+            E.g. NZLEG/RTA/s40 contains both "Remuneration of Principal Tenancy
+            Adjudicator" (old section) and "Tenant's responsibilities" (current).
+
+        Resolution strategy:
+        1. Fetch all chunks (limit=64), sort by chunk_index ascending.
+        2. Group by title. Discard groups whose title looks transitional/amendment.
+        3. Among remaining groups, prefer the one with the most chunks (the longer
+           operative section was split into more windows; the wrong/old section is short).
+        4. Within the winning group, skip chunks whose text starts with amendment language.
+        5. Return the first (lowest chunk_index) operative chunk.
+        """
         t0 = time.perf_counter_ns()
         results, _ = self._client.scroll(
             collection_name=self._collection,
             scroll_filter=Filter(must=[FieldCondition(key="case_id", match=MatchValue(value=case_id))]),
-            limit=1,
+            limit=64,
             with_payload=True,
             with_vectors=False,
         )
         if timer := get_timer():
             timer.record("qdrant_fetch", (time.perf_counter_ns() - t0) // 1000,
                          collection=self._collection, case_id=case_id, found=bool(results))
-        return SearchResult(results[0].payload, 1.0) if results else None
+        if not results:
+            return None
+
+        # Sort by chunk_index so the section opening comes first within each group.
+        results.sort(key=lambda p: p.payload.get("chunk_index", 0))
+
+        # Group chunks by their section title.
+        by_title: dict[str, list] = defaultdict(list)
+        for r in results:
+            by_title[r.payload.get("title", "")].append(r)
+
+        # Discard title groups that look like transitional/amendment provisions.
+        operative_groups = [
+            (title, chunks)
+            for title, chunks in by_title.items()
+            if not self._is_transitional_title(title)
+        ]
+
+        # If everything looks transitional, fall back to all groups.
+        if not operative_groups:
+            operative_groups = list(by_title.items())
+
+        # Prefer the group with the most chunks (longer = more likely to be the
+        # current operative section; historical sections tend to be short).
+        operative_groups.sort(key=lambda x: len(x[1]), reverse=True)
+        _title, best_chunks = operative_groups[0]
+
+        # Within the winning group, skip chunks with amendment text in the body.
+        clean = [r for r in best_chunks if not self._is_amendment_chunk(r.payload)]
+        chosen = (clean or best_chunks)[0]
+        return SearchResult(chosen.payload, 1.0)
 
     @property
     def client(self) -> QdrantClient:

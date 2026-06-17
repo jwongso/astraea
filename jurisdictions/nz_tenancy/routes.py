@@ -769,12 +769,12 @@ ROUTES: list[StatuteRoute] = [
         ),
         forced_sections=(
             "NZLEG/RTA/s138B",
-            "NZLEG/HHS2019/s8",   # heating: main living room qualifying heater
-            "NZLEG/HHS2019/s14",  # insulation: qualifying ceiling insulation
-            "NZLEG/HHS2019/s21",  # ventilation: openable windows/doors
-            "NZLEG/HHS2019/s23",  # ventilation: extraction fans in kitchens and bathrooms
-            "NZLEG/HHS2019/s26",  # draught: gaps and holes
-            "NZLEG/HHS2019/s28",  # moisture: ground moisture barrier
+            "NZLEG/HHS/r8",   # heating: main living room qualifying heater
+            "NZLEG/HHS/r14",  # insulation: qualifying ceiling insulation
+            "NZLEG/HHS/r21",  # ventilation: openable windows/doors
+            "NZLEG/HHS/r23",  # ventilation: extraction fans in kitchens and bathrooms
+            "NZLEG/HHS/r26",  # draught: gaps and holes
+            "NZLEG/HHS/r28",  # moisture: ground moisture barrier
         ),
         synthetic_query=(
             "healthy homes standards heating insulation ventilation moisture draught "
@@ -791,9 +791,9 @@ ROUTES: list[StatuteRoute] = [
             "smoke alarm", "carbon monoxide",
         ),
         forced_sections=(
-            "NZLEG/HHS2019/s21",  # ventilation: openable windows/doors
-            "NZLEG/HHS2019/s23",  # ventilation: extraction fans in kitchens and bathrooms
-            "NZLEG/HHS2019/s24",  # exemption from mechanical ventilation standard
+            "NZLEG/HHS/r21",  # ventilation: openable windows/doors
+            "NZLEG/HHS/r23",  # ventilation: extraction fans in kitchens and bathrooms
+            "NZLEG/HHS/r24",  # exemption from mechanical ventilation standard
         ),
         synthetic_query=(
             "landlord obligations lighting smoke alarm carport laundry "
