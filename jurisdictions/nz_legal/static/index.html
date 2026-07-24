@@ -703,7 +703,7 @@
   <h1>NZ Legal RAG</h1>
   <span>Self-hosted AI legal research prototype - all queries stay on your hardware</span>
   <div style="margin-left:auto;display:flex;gap:12px;align-items:center;">
-    <a href="https://github.com/jwongso/astraea" target="_blank" style="color:#a0aec0;font-size:0.8rem;text-decoration:none;border:1px solid #2d2d5e;padding:4px 10px;border-radius:6px;">Powered by Astraea</a>
+    <a href="https://github.com/jwongso/astraea.cpp" target="_blank" style="color:#a0aec0;font-size:0.8rem;text-decoration:none;border:1px solid #2d2d5e;padding:4px 10px;border-radius:6px;">Powered by Astraea.cpp</a>
     <a id="about-link" href="#" style="color:#a0aec0;font-size:0.8rem;text-decoration:none;border:1px solid #2d2d5e;padding:4px 10px;border-radius:6px;">About</a>
   </div>
 </header>
@@ -1039,7 +1039,7 @@
   <div style="max-width:860px;margin:0 auto;">
 
     <h2 style="font-size:1.3rem;color:#1a1a2e;margin-bottom:8px;">NZ Legal RAG</h2>
-    <p style="color:#555;margin-bottom:24px;">A self-hosted AI legal research prototype for New Zealand public legal sources, built to explore privacy-preserving RAG, structured legal retrieval, and citation-grounded generation.</p>
+    <p style="color:#555;margin-bottom:24px;">A self-hosted AI legal research prototype for New Zealand public legal sources, powered by Astraea.cpp for privacy-preserving RAG, structured legal retrieval, and citation-grounded generation.</p>
 
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:32px;">
       <div style="background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.08);text-align:center;">
@@ -1067,12 +1067,12 @@
     <h3 style="font-size:1rem;color:#1a1a2e;margin-bottom:10px;">What this demonstrates</h3>
     <p style="color:#555;margin-bottom:8px;">An on-premise RAG architecture for privacy-sensitive legal workflows, where data residency, legal professional privilege, and operational control are important design constraints.</p>
     <ul style="color:#555;margin-bottom:24px;list-style:none;padding:0;display:flex;flex-direction:column;gap:6px;">
-      <li>🐍 <strong>FastAPI</strong> &mdash; async REST API, SSE streaming, request queue</li>
-      <li>🦙 <strong>llama.cpp</strong> &mdash; Qwen3-30B-A3B (MoE) on Apple M4 Pro 48 GB unified memory</li>
-      <li>🔥 <strong>PyTorch</strong> &mdash; nomic-embed-text-v1.5 + Qwen3-Embedding-0.6B via sentence-transformers</li>
-      <li>🐘 <strong>PostgreSQL</strong> &mdash; structured metadata, SQL pre-filtering for court and date filters</li>
-      <li>🎯 <strong>Qdrant</strong> &mdash; vector index, 2.8 M+ chunks across 13 NZ courts</li>
-      <li>🔴 <strong>Redis</strong> &mdash; web verification result cache</li>
+      <li>⚙️ <strong>Astraea.cpp</strong> &mdash; C++ REST API, SSE streaming, request queue, and jurisdiction-specific tracker endpoints</li>
+      <li>🦙 <strong>llama.cpp</strong> &mdash; local Qwen-class LLM inference on Apple Silicon</li>
+      <li>🔥 <strong>Python ingestion jobs</strong> &mdash; embeddings, corpus indexing, and structured payload backfills for sentencing, PG, counsel, flags, and penalties</li>
+      <li>🐘 <strong>PostgreSQL</strong> &mdash; structured metadata and offline corpus management</li>
+      <li>🎯 <strong>Qdrant</strong> &mdash; vector index and structured payload filters across 2.8 M+ chunks and 13 NZ courts/tribunals</li>
+      <li>🔴 <strong>Redis</strong> &mdash; session and coordination support</li>
       <li>☁️ <strong>Cloudflare Tunnel</strong> &mdash; zero-trust public access, no open ports</li>
     </ul>
 
@@ -1083,29 +1083,29 @@
     -> metadata extraction (court, year, parties, citations)
     -> section-aware chunking (120-word windows)
     -> sentence-transformer embeddings (nomic-embed-text-v1.5 / Qwen3-Embedding-0.6B,
-       CUDA-accelerated via PyTorch dynamic device selection)
+       selected per deployed embedding service)
     -> Qdrant vector index (deterministic UUID5 point IDs, idempotent)
     -> PostgreSQL relational store (documents, chunks, sentencing_cases,
-       employment_cases - structured metadata for filtered search)
+       employment_cases - structured metadata for offline maintenance)
+    -> structured payload backfills for sentencing, personal grievance,
+       counsel, flags, and penalties
 
 Query pipeline:
   User question
+    -> Astraea.cpp C++ API receives /ask, /ask/stream, and tracker requests
     -> heuristic court planner (no LLM): detects jurisdiction from domain
        signals - criminal/NZCA+NZHC, employment/NZERA, tenancy/NZTT, ACC,
        human rights/NZHRRT, statute sections/NZLEG. Extracts year from
        temporal phrases. Benchmarked: achieves oracle-equivalent quality.
-    -> SQL pre-filter: PostgreSQL narrows candidates by court, year, offence,
-       grievance type, or outcome fields (sentencing tracker / PG tracker)
-    -> Qdrant semantic search within filtered candidate set
+    -> Qdrant structured filters narrow candidates by court, year, offence flag,
+       grievance type, sentencing factor, or PG outcome
+    -> Qdrant semantic search within filtered candidate set for free-text RAG
     -> intent-aware legal ranker: four profiles - authority (court hierarchy
        + citation density), example (recency boost), tracker (structured
        payload bonus), statute (legislation-first weighting). MRR +37% vs
        unranked baseline, zero coverage regressions.
-    -> conditional BM25 (activated only for section refs, citations, quoted
-       phrases, short keyword queries): OR-joined anchor extraction avoids
-       AND-strictness. RRF-fused with vector results when active.
-    -> context assembly + GPU-accelerated LLM generation (llama.cpp C++ with CUDA backend,
-       Qwen3-8B Q4_K_M, full layer offload to RTX 4060 8 GB)
+    -> context assembly + local LLM generation through llama.cpp-compatible
+       OpenAI endpoints
     -> citation verifier (regex, no extra LLM call)
     -> citation-backed answer with source URLs</pre>
 
@@ -1118,7 +1118,7 @@ Query pipeline:
     </div>
 
     <h3 style="font-size:1rem;color:#1a1a2e;margin-bottom:10px;">Structured trackers</h3>
-    <p style="color:#555;margin-bottom:24px;">Beyond free-text RAG, the system extracts structured fields at ingest time via regex and a local LLM, storing them in PostgreSQL and Qdrant payload. PostgreSQL pre-filtering narrows the candidate set before semantic search - comparable to Westlaw NZ tracker products but fully on-premise:</p>
+    <p style="color:#555;margin-bottom:24px;">Beyond free-text RAG, the system extracts structured fields at ingest/backfill time via regex and local processing, storing them in Qdrant payloads consumed directly by Astraea.cpp tracker endpoints - comparable to Westlaw NZ tracker products but fully on-premise:</p>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
       <div style="background:#fff;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
         <div style="font-weight:600;color:#1a1a2e;margin-bottom:4px;">Sentencing Tracker</div>
@@ -1139,8 +1139,8 @@ Query pipeline:
     </ul>
 
     <div style="display:flex;gap:12px;flex-wrap:wrap;">
-      <a href="https://github.com/jwongso/astraea" target="_blank" style="background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.88rem;">Powered by Astraea</a>
-      <a href="https://github.com/jwongso/astraea#readme" target="_blank" style="background:#fff;color:#1a1a2e;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.88rem;border:1px solid #ddd;">README</a>
+      <a href="https://github.com/jwongso/astraea.cpp" target="_blank" style="background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.88rem;">Powered by Astraea.cpp</a>
+      <a href="https://github.com/jwongso/astraea.cpp#readme" target="_blank" style="background:#fff;color:#1a1a2e;padding:10px 20px;border-radius:8px;text-decoration:none;font-size:0.88rem;border:1px solid #ddd;">README</a>
     </div>
 
     <p style="margin-top:24px;font-size:0.78rem;color:#999;">Research prototype only. This tool summarizes public legal sources and does not provide legal advice. Consult a qualified NZ lawyer for your specific situation.</p>
@@ -1151,6 +1151,6 @@ Query pipeline:
 
 <button id="dev-toggle" title="Toggle developer trace mode">DEV</button>
 
-<script src="/static/app.js?v=3"></script>
+<script src="/static/app.js?v=6"></script>
 </body>
 </html>

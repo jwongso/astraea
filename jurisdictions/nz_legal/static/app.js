@@ -490,6 +490,13 @@ function suggest(el) {
   sendMessage();
 }
 
+function formatSourceLabel(s, i) {
+  const title = s.title || s.case_id || 'Source';
+  const court = s.court_name || s.court || 'Court unknown';
+  const date = s.date || 'date unknown';
+  return `[${i+1}] ${title} (${court}, ${date})`;
+}
+
 function appendMessage(role, text, sources, trace, cv) {
   const empty = document.getElementById('empty');
   if (empty) empty.remove();
@@ -537,7 +544,7 @@ function appendMessage(role, text, sources, trace, cv) {
       const a = document.createElement('a');
       a.href = s.url;
       a.target = '_blank';
-      a.textContent = `[${i+1}] ${s.title} (${s.court_name}, ${s.date})`;
+      a.textContent = formatSourceLabel(s, i);
       item.appendChild(a);
       srcDiv.appendChild(item);
     });
@@ -672,7 +679,7 @@ async function sendMessage() {
       const a = document.createElement('a');
       a.href = s.url;
       a.target = '_blank';
-      a.textContent = `[${i+1}] ${s.title} (${s.court_name}, ${s.date})`;
+      a.textContent = formatSourceLabel(s, i);
       item.appendChild(a);
       srcDiv.appendChild(item);
     });
